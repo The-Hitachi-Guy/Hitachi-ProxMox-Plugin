@@ -1,0 +1,63 @@
+{
+	"serverName": "pve1",
+	"mountRoot": "/mnt",
+	"isClusterNode": true,
+	"clusterConfig": {
+		"clusterName": "pve-cluster",
+		"clusterNodes": [
+			{
+				"nodeId": 1,
+				"nodeName": "pve1"
+			},
+			{
+				"nodeId": 2,
+				"nodeName": "pve2"
+			}
+		]
+	},
+	"multipathData": {
+		"multipathVolumes": [
+			{
+				"wwid": "1234",
+				"friendlyName": "Proxmox-Cluster-Vol1",
+				"volumeType": "datastore",
+				"datastoreInfo": {
+                    "fileSystem": "gfs2",
+					"mountPoint": "/mnt/Proxmox-Cluster-Vol1",
+					"datastoreName": "Proxmox-Cluster-Vol1"
+				}
+			},
+			{
+				"wwid": "5678",
+				"friendlyName": "Proxmox-Cluster-Vol2",
+				"volumeType": "rdm",
+				"rdmInfo": {
+					"diskId": "scsi-360060e80289e1d0050809e1d00000079",
+					"vms": [
+						{
+							"vmId": 103,
+							"scsiId": 2
+						},
+						{
+							"vmId": 104,
+							"scsiId": 3
+						}
+					]
+				}
+			},
+			{
+				"wwid": "9876",
+				"friendlyName": "Proxmox-Cluster-Vol3",
+				"volumeType": "unused"
+			}
+		],
+		"blacklistedVolumes": [
+			{
+				"wwid": "123456"
+			},
+			{
+				"wwid": "SATADOM"
+			}
+		]
+	}
+}
