@@ -84,7 +84,23 @@ sub type {
 }
 
 sub plugindata {
-    return { content => [ { images => 1, rootdir => 1, iso => 1, vztmpl => 1, backup => 1, snippets => 1, }, { images => 1, rootdir => 1 } ], };
+    return {
+        content => [ 
+            {
+                images => 1,
+                rootdir => 1,
+                iso => 1,
+                vztmpl => 1,
+                backup => 1,
+                snippets => 1,
+                none => 1,
+                import => 1,
+            },
+            { images => 1, rootdir => 1 }
+        ],
+        format => [{ raw => 1, qcow2 => 1, vmdk => 1, subvol => 1 }, 'raw'],
+        'sensitive-properties' => {},
+    };
 }
 
 sub properties {
@@ -98,40 +114,28 @@ sub properties {
              description => "Mount point where multipath directories are mounted on the server",
              type        => 'string',
              default     => $default_mount_point,
-        },
-        preferlocal => {
-             description => "Prefer to create local storage (yes/no)",
-             type        => 'string',
-             default     => $default_prefer_local_storage,
-        },
-        exactsize => {
-             description => "Set size in DRBD res files. This allows online moving from another storage (e.g., LVM), but should only be set temporarily (yes/no)",
-             type        => 'string',
-             default     => $default_exact_size,
-        },
-        statuscache => {
-             description => "Time in seconds status information is cached, 0 means no extra cache",
-             type        => 'integer',
-             minimum     => 0,
-             maximum     => 2*60*60,
-             default     => $default_status_cache,
-        },
-        apicrt => {
-             description => "Path to the client certificate.",
-             type        => 'string',
-             default     => $default_apicrt,
-        },
-        apikey => {
-             description => "Path to the client private key",
-             type        => 'string',
-             default     => $default_apikey,
-        },
-        apica => {
-             description => "Path to the CA certificate",
-             type        => 'string',
-             default     => $default_apica,
-        },
+        }
+    };
+}
 
+sub options {
+    return {
+        path => { fixed => 1 },
+        'content-dirs' => { optional => 1 },
+        nodes => { optional => 1 },
+        shared => { optional => 1 },
+        disable => { optional => 1 },
+        'prune-backups' => { optional => 1 },
+        'max-protected-backups' => { optional => 1 },
+        content => { optional => 1 },
+        format => { optional => 1 },
+        mkdir => { optional => 1 },
+        'create-base-path' => { optional => 1 },
+        'create-subdirs' => { optional => 1 },
+        is_mountpoint => { optional => 1 },
+        bwlimit => { optional => 1 },
+        preallocation => { optional => 1 },
+        'snapshot-as-volume-chain' => { optional => 1, fixed => 1 },
     };
 }
 
