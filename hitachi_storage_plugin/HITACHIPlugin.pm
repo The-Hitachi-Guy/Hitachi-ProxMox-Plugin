@@ -519,3 +519,23 @@ sub load_data {
         }
     }
 }
+
+# **********************************************************************
+# Creates a GPT partition table and a primary partition on the given device.
+# Then updates the system with the new partition using kpartx.
+# Param:
+#   String: The device on which to create the partition (e.g., /dev/sdx)
+# Returns:
+#   Integer: 0 (successful) or 1 (failed)
+# **********************************************************************
+sub make_gpt_partition {
+    my ($device) = @_;
+    my $partition = $device . "-part1";
+    print "Creating GPT partition table and primary partition on $device...\n";
+    $cmd = 'parted -s ' . $device . ' mklabel gpt mkpart primary "1 -1"';
+    system($cmd);
+    print "Updating system with partition on $partition...\n";
+    $cmd = 'kpartx -a ' . $partition;
+    my $status = system($cmd);
+    return $status;
+}
