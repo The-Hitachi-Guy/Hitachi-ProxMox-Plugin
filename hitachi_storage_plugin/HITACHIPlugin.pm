@@ -114,7 +114,37 @@ sub properties {
              description => "Mount point where multipath directories are mounted on the server",
              type        => 'string',
              default     => $default_mount_point,
-        }
+        },
+        path => {
+            description => "File system path.",
+            type => 'string',
+            format => 'pve-storage-path',
+        },
+        mkdir => {
+            description =>
+                "Create the directory if it doesn't exist and populate it with default sub-dirs."
+                . " NOTE: Deprecated, use the 'create-base-path' and 'create-subdirs' options instead.",
+            type => 'boolean',
+            default => 'yes',
+        },
+        'create-base-path' => {
+            description => "Create the base directory if it doesn't exist.",
+            type => 'boolean',
+            default => 'yes',
+        },
+        'create-subdirs' => {
+            description => "Populate the directory with the default structure.",
+            type => 'boolean',
+            default => 'yes',
+        },
+        is_mountpoint => {
+            description => "Assume the given path is an externally managed mountpoint "
+                . "and consider the storage offline if it is not mounted. "
+                . "Using a boolean (yes/no) value serves as a shortcut to using the target path in this field.",
+            type => 'string',
+            default => 'no',
+        },
+        bwlimit => get_standard_option('bwlimit'),
     };
 }
 
@@ -401,6 +431,14 @@ sub get_hitachi_disks {
     return @disks;
 }
 
+# *************************************************************************
+# Converts a Hitachi disk hash reference to a string for display
+# Param:
+#   HashRef: Reference to a Hitachi disk hash
+#           with attributes "device", "size", "wwid" and "model"
+# Returns:
+#   String: String representation of the Hitachi disk
+# *************************************************************************
 sub convert_hitachi_disk_to_string {
     my($disk_ref) = @_;
     my %disk = %{$disk_ref};
@@ -465,21 +503,7 @@ sub get_cluster_nodes {
         }
     }
 
-    return @nodes
-
-    # for my $line (split /\n/, $text) {
-    #     # Match lines that look like: "    1    1 pve1"
-    #     if (%line =~ /^\s*\d+\s+\d+\s+(\S+)/) {
-    #         my $name = $1;
-    #         # Remove "(local)" if present
-    #         $name =~ s/\(local\)//;
-    #         # Trim trailing whitespace
-    #         $name =~ s/\s+$//;
-    #         push @names, $name
-    #     }
-    # }
-
-    # return @names;
+    return @nodes;
 }
 
 # **********************************************************
@@ -536,6 +560,22 @@ sub make_gpt_partition {
     system($cmd);
     print "Updating system with partition on $partition...\n";
     $cmd = 'kpartx -a ' . $partition;
+    my $status = system($cmd);
+    return $status;
+}
+
+# **********************************************************************
+# Rescans the partitions on the given device to ensure the system
+# recognizes any new partitions.
+# Param:
+#   String: The device on which to rescan partitions (e.g., /dev/sdx)
+# Returns:
+#   Integer: 0 (successful) or 1 (failed)
+# **********************************************************************
+sub rescan_partitions {
+    my ($device) = @_;
+    print "Rescanning partitions on $device...\n";
+    my $cmd = 'partprobe ' . $device;
     my $status = system($cmd);
     return $status;
 }

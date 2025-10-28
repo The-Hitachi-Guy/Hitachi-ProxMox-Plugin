@@ -24,6 +24,22 @@ get_disk_usage() {
     fi
 }
 
+######################################################
+# Creates a single GPT partition on the specified disk
+# Arguments:
+#   $1 - Disk device (e.g., /dev/sdb)
+# Returns:
+#   None
+######################################################
+make_gpt_partition() {
+    local disk=$1
+    
+    # Create a single GPT partition on the disk
+    parted -s "$disk" mklabel gpt mkpart primary "1 -1"
+    # Inform the OS of partition table changes
+    kpartx -a "$disk-part1"
+}
+
 rescan=/usr/bin/rescan-scsi-bus.sh
 echo
 echo "*****************************************************************"

@@ -1,4 +1,21 @@
 #!/bin/bash
+
+######################################################
+# Creates a single GPT partition on the specified disk
+# Arguments:
+#   $1 - Disk device (e.g., /dev/sdb)
+# Returns:
+#   None
+######################################################
+make_gpt_partition() {
+    local disk=$1
+    
+    # Create a single GPT partition on the disk
+    parted -s "$disk" mklabel gpt mkpart primary "1 -1"
+    # Inform the OS of partition table changes
+    kpartx -a "$disk-part1"
+}
+
 currentNodeName=$(hostname)
 isClusterNode="N"
 echo "Conifugure this system a standalone server or as a cluster node?"
@@ -228,6 +245,7 @@ for ((i=0; i < ${#diskIdArray[@]}; i++)); do
     multipathSection+=($'\t\talias'" ${diskNames[$i]}")
     multipathSection+=($'\t}')
 done
+multipathSection+=($'\t# End of multipath devices')
 multipathSection+=("}")
 
 # echo "Printing multipaths section:"
@@ -293,8 +311,9 @@ if [[ "$isClusterNode" == "Y" ]]; then
 
         # Create GFS2 filesystems on each volume
         for diskName in ${diskNames[@]}; do
-            echo "Creating GFS2 filesystem on /dev/mapper/$diskName with cluster table name '$clusterName:$diskName' and $clusterNodeCount journals..."
-            mkfs.gfs2 -t $clusterName:$diskName -j $clusterNodeCount -J 1024 /dev/mapper/$diskName -O
+            make_gpt_partition "/dev/mapper/$diskName"
+            echo "Creating GFS2 filesystem on /dev/mapper/$diskName-part1 with cluster table name '$clusterName:$diskName' and $clusterNodeCount journals..."
+            mkfs.gfs2 -t $clusterName:$diskName -j $clusterNodeCount -J 1024 /dev/mapper/$diskName-part1 -O
             echo
         done
     else # Skip GFS2 creation if not first cluster node
@@ -304,10 +323,11 @@ if [[ "$isClusterNode" == "Y" ]]; then
     # Create mount points, systemd mount services, and enable/start service for each volume
     for diskName in ${diskNames[@]}; do
         mnt="/mnt/$diskName"
+        partition="/dev/mapper/$diskName-part1"
         echo "Creating directory '$mnt' to mount the volume..."
         mkdir -p $mnt
         echo Creating service to mount volume on boot...
-        uuid=$(blkid /dev/mapper/$diskName | sed -n 's/.*UUID=\"\([^\"]*\)\".*/\1/p')
+        uuid=$(blkid $partition | sed -n 's/.*UUID=\"\([^\"]*\)\".*/\1/p')
         escaped_mnt=$(systemd-escape -p --suffix=mount $mnt)
 
         serviceText="[Unit]
