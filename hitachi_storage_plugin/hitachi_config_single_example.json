@@ -3,18 +3,18 @@
 	"mountRoot": "/mnt",
 	"isClusterNode": false,
 	"multipathData": {
-		"multipathVolumes": [
-			{
+		"multipathVolumes": {
+			"1234": {
 				"wwid": "1234",
 				"friendlyName": "Proxmox-Cluster-Vol1",
 				"volumeType": "datastore",
 				"datastoreInfo": {
-                    "fileSystem": "xfs",
+                    "fileSystem": "gfs2",
 					"mountPoint": "/mnt/Proxmox-Cluster-Vol1",
 					"datastoreName": "Proxmox-Cluster-Vol1"
 				}
 			},
-			{
+			"5678": {
 				"wwid": "5678",
 				"friendlyName": "Proxmox-Cluster-Vol2",
 				"volumeType": "rdm",
@@ -32,12 +32,12 @@
 					]
 				}
 			},
-			{
+			"9876": {
 				"wwid": "9876",
 				"friendlyName": "Proxmox-Cluster-Vol3",
 				"volumeType": "unused"
 			}
-		],
+		},
 		"blacklistedVolumes": [
 			{
 				"wwid": "123456"

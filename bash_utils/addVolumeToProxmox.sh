@@ -2,26 +2,40 @@
 get_disk_usage() {
     answer=
     validAnswer=false
-    while [[ "$validAnswer" != true ]]; do
-        echo "Disk Usage Types:" >&2
-        echo "*****************" >&2
-        echo "1) Proxmox Datastore" >&2
-        echo "2) Raw Device Mapped (RDM) Volume" >&2
-        echo >&2
-        read -p "Choose disk usage type for disk $1: " answer
-        if [[ "$answer" =~ ^[1-2]+$ ]]; then
-            validAnswer=true
-        else
-            echo "Invalid response! Enter either 1 or 2." >&2
+    correct=false
+    usageType=""
+    while : ; do
+        while [[ "$validAnswer" != true ]]; do
+            echo "Disk Usage Types:" >&2
+            echo "*****************" >&2
+            echo "1) Proxmox Datastore" >&2
+            echo "2) Raw Device Mapped (RDM) Volume" >&2
             echo >&2
-        fi
-    done
+            read -p "Choose disk usage type for disk $1: " answer
+            if [[ "$answer" =~ ^[1-2]+$ ]]; then
+                validAnswer=true
+            else
+                echo "Invalid response! Enter either 1 or 2." >&2
+                echo >&2
+            fi
+        done
 
-    if [[ "$answer" == "1" ]]; then
-        echo "datastore"
-    else
-        echo "rdm"
-    fi
+
+        if [[ "$answer" == "1" ]]; then
+            usageType="datastore"
+        else
+            usageType="rdm"
+        fi
+        echo "You selected '$usageType' for disk $1." >&2
+        read -p "Correct? (Y/N): " correct
+        if [[ "$correct" == "Y" || "$correct" == "y" ]]; then
+            echo "$usageType"
+            break
+        else
+            validAnswer=false
+        fi
+        echo >&2
+    done
 }
 
 ######################################################
@@ -38,6 +52,60 @@ make_gpt_partition() {
     parted -s "$disk" mklabel gpt mkpart primary "1 -1"
     # Inform the OS of partition table changes
     kpartx -a "$disk-part1"
+}
+
+######################################################
+# Rescan for new disks and multipath devices
+# Returns:
+#   None
+######################################################
+rescan_disks() {
+    rescan=/usr/bin/rescan-scsi-bus.sh
+    echo "Rescanning SCSI bus for new disks and multipath devices..."
+    # Create a single GPT partition on the disk
+    $rescan --multipath --largelun --color
+}
+
+#######################################################
+# Handle multipath devices and get user to select disks
+# Returns:
+#  None
+#######################################################
+configure_multipath_for_disk() {
+    ready="n"
+    aliasCorrect="n"
+    aliasName=""
+    multipathFile="/etc/multipath.conf"
+    multipathFile="./multipath.conf"
+    multipathEntry=("\tmultipath {")
+    
+    echo "Configuring multipath for new disk $1..." 
+    uuid=$(/usr/lib/udev/scsi_id --whitelisted --replace-whitespace --device= "$1")
+    while [[ "$aliasCorrect" != "Y" && "$aliasCorrect" != "y" ]]; do
+        read -p "Enter alias for new multipath device (e.g., mpatha): " aliasName
+        read -p "Is '$aliasName' correct? (Y/N): " aliasCorrect
+    done
+
+    read -p "Ready to configure multipath device? (Y/N): " ready
+    
+    if [[ "$ready" != "Y" && "$ready" != "y" ]]; then
+        multipathEntry+=($'\t\twwid'" $uuid")
+        multipathEntry+=($'\t\talias'" $aliasName")
+        multipathEntry+=($'\t}')
+        echo "Adding multipath entry for disk $1 with UUID $uuid..."
+        multipath -a $uuid
+        echo "Creating multipath configuration for disk $1 with alias '$aliasName'..."
+        for line in "${multipathEntry[@]}"; do
+            sed -i "/# End of multipath devices/i\ $line {" $multipathFile
+        done
+        
+        # Restart multipath service to apply changes
+        # echo "Restarting multipath service..."
+        # systemctl restart multipathd.service
+    else
+        echo "Skipping multipath configuration for disk $1."
+    fi
+    
 }
 
 rescan=/usr/bin/rescan-scsi-bus.sh
@@ -123,6 +191,7 @@ echo "********************************"
 
 valid_disks=()
 valid_disks_correct="n"
+rescan_disks
 while [[ "$valid_disks_correct" != "Y" && "$valid_disks_correct" != "y" ]]; do
     # Get top-level sd devices with name, size, and WWN
     mapfile -t disks < <(lsblk -ndo NAME,SIZE,WWN,MODEL | grep 'OPEN-V')
@@ -186,5 +255,13 @@ while [[ "$valid_disks_correct" != "Y" && "$valid_disks_correct" != "y" ]]; do
 done
 
 for disk in ${valid_disks[@]}; do
+    disk_usage=$(get_disk_usage "$disk")
+    echo "Selected usage: $disk_usage"
     echo "$disk"
+
+    if [[ "$disk_usage" == "datastore" ]]; then
+        echo "Creating GPT partition on $disk..."
+        make_gpt_partition "$disk"
+        echo "Partition created."
+    fi
 done
