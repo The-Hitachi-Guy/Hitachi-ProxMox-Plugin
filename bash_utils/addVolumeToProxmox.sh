@@ -76,11 +76,12 @@ configure_multipath_for_disk() {
     aliasCorrect="n"
     aliasName=""
     multipathFile="/etc/multipath.conf"
-    multipathFile="./multipath.conf"
+    # multipathFile="/root/hitachi/multipath.conf"
     multipathEntry=("\tmultipath {")
     
-    echo "Configuring multipath for new disk $1..." 
-    uuid=$(/usr/lib/udev/scsi_id --whitelisted --replace-whitespace --device= "$1")
+    uuid=$(/usr/lib/udev/scsi_id --whitelisted --replace-whitespace --device="$1")
+    echo "Configuring multipath for new disk $1 with UUID $uuid..." >&2
+    
     while [[ "$aliasCorrect" != "Y" && "$aliasCorrect" != "y" ]]; do
         read -p "Enter alias for new multipath device (e.g., mpatha): " aliasName
         read -p "Is '$aliasName' correct? (Y/N): " aliasCorrect
@@ -88,24 +89,25 @@ configure_multipath_for_disk() {
 
     read -p "Ready to configure multipath device? (Y/N): " ready
     
-    if [[ "$ready" != "Y" && "$ready" != "y" ]]; then
+    if [[ "$ready" == "Y" || "$ready" == "y" ]]; then
         multipathEntry+=($'\t\twwid'" $uuid")
         multipathEntry+=($'\t\talias'" $aliasName")
         multipathEntry+=($'\t}')
-        echo "Adding multipath entry for disk $1 with UUID $uuid..."
+        echo "Adding multipath entry for disk $1 with UUID $uuid..." >&2
         multipath -a $uuid
-        echo "Creating multipath configuration for disk $1 with alias '$aliasName'..."
+        echo "Creating multipath configuration for disk $1 with alias '$aliasName'..." >&2
         for line in "${multipathEntry[@]}"; do
-            sed -i "/# End of multipath devices/i\ $line {" $multipathFile
+            echo "$line" >&2
+            sed -i "/# End of multipath devices/i\ $line" $multipathFile
         done
         
         # Restart multipath service to apply changes
-        # echo "Restarting multipath service..."
-        # systemctl restart multipathd.service
+        echo "Reloading multipath service..." >&2
+        systemctl reload multipathd.service
+        echo $aliasName
     else
-        echo "Skipping multipath configuration for disk $1."
+        echo "Skipping multipath configuration for disk $1." >&2
     fi
-    
 }
 
 rescan=/usr/bin/rescan-scsi-bus.sh
@@ -255,6 +257,9 @@ while [[ "$valid_disks_correct" != "Y" && "$valid_disks_correct" != "y" ]]; do
 done
 
 for disk in ${valid_disks[@]}; do
+    configure_multipath_for_disk "$disk"
+    
+    read -p "waiting here..." wait
     disk_usage=$(get_disk_usage "$disk")
     echo "Selected usage: $disk_usage"
     echo "$disk"
