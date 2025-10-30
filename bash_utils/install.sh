@@ -367,7 +367,7 @@ WantedBy=multi-user.target
 
         echo "Finished configuring this node and the cluster storage!"
     else
-        echo "Not first cluster node. Skipping Proxmo
+        echo "Not first cluster node. Skipping Proxmo"
         echo
         echo "Finished configuring this node!"
         echo "Please repeat this script on all other cluster nodes to configure their storage. Then continue this script on the first node to create Proxmox storage entries."
@@ -386,7 +386,7 @@ else # Else if you are a standalone server
         mnt="/mnt/$diskName"
         echo "Creating directory '$mnt' to mount the volume..."
         mkdir -p $mnt
-        echo Creating service to mount volume on boot...
+        echo "Creating service to mount volume on boot..."
         uuid=$(blkid /dev/mapper/$diskName | sed -n 's/.*UUID=\"\([^\"]*\)\".*/\1/p')
         escaped_mnt=$(systemd-escape -p --suffix=mount $mnt)
 
@@ -412,7 +412,8 @@ WantedBy=multi-user.target
         echo
 
         # Create Proxmox Storage entries for each volume
-        px storage creation..."vesm add dir $diskName --path $mnt --create-base-path --create-subdirs --nodes $currentNodeName --content images,rootdir,vztmpl,backup,iso,snippets,import --snapshot-as-volume-chain 1
+        echo "Proxmox storage creation..."
+        pvesm add dir $diskName --path $mnt --create-base-path --create-subdirs --nodes $currentNodeName --content images,rootdir,vztmpl,backup,iso,snippets,import --snapshot-as-volume-chain 1
     done
 
     echo "Finished configuring standalone server storage!"
