@@ -71,7 +71,7 @@ def generate_multipath_config()->None:
         lines.append(f"\t\twwid {volume['wwid']}")
         lines.append(f"\t\talias {volume['friendlyName']}")
         lines.append("\t}")
-    lines.append("\t# # End of multipath devices")
+    lines.append("\t# End of multipath devices")
     lines.append("}")
 
     # Add Devices section to lines    
@@ -80,7 +80,7 @@ def generate_multipath_config()->None:
     for key, value in devicesSection["device"].items():
         lines.append(f"\t\t{key} {value}")
     lines.append("\t}")
-    lines.append("}")
+    lines.append("}\n")
 
     print("\n".join(lines))
 
@@ -121,5 +121,4 @@ def readConfigFile()->dict:
         return configData
     
 if __name__ == "__main__":
-    config = generate_multipath_config()
-    print(json.dumps(config, indent=4))
+    generate_multipath_config()
