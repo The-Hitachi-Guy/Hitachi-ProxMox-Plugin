@@ -200,8 +200,8 @@ echo "Found following Hitachi SAN Volume IDs and enabled them for multipath supp
 for diskId in ${diskIdArray[@]}; do
 	echo -e "\t$diskId"
     correctVolName="N"
-    read -p $"\tEnable multipathing support for disk '$diskId'? (Y/N): " enableMultipath
-    if [[ "$enableMultipath" != "Y" && "$enableMultipath" != "y" ]]; then
+    read -p $'\tEnable multipathing support for disk '"'$diskId'? (Y/N): " enableMultipath
+    if [[ "$enableMultipath" == "Y" || "$enableMultipath" == "y" ]]; then
         while [[ "$correctVolName" != "Y" && "$correctVolName" != "y" ]]; do
             read -p $'\tEnter '"name for volume $diskId [default: vol${#diskNames[@]}]: " volName
             volName=${volName:-vol${#diskNames[@]}}
