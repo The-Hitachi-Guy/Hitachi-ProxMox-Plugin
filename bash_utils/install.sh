@@ -47,6 +47,7 @@ verify_disks_found() {
             fi
         fi
     done
+    echo
     return 1
 }
 
