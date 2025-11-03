@@ -47,7 +47,7 @@ verify_disks_found() {
             fi
         fi
     done
-    echo
+    echo >&2
     return 1
 }
 
@@ -137,32 +137,9 @@ echo
 # Waiting for user to zone and attached FC volumes
 read -p "Hit enter to continue once the volumes are attached to the server..."
 echo
+
+# Verify new disks are found
 verify_disks_found
-
-# # Rescan SCSI Bus to detect the new volume(s)
-# echo "#########################################"
-# echo "# Rescanning SCSI Bus to find new disks #"
-# echo "#########################################"
-# rescan-scsi-bus.sh -i && rescan-scsi-bus.sh -a
-# echo
-
-# # List discovered volume(s) and ask if reboot is needed
-# echo "#######################################"
-# echo "# Listing current disks of the system #"
-# echo "#######################################"
-# lsblk
-# echo
-# read -p "Are SAN volume(s) found? (Y/N): " foundVolumes
-# if [ "$foundVolumes" != "Y" ] && [ "$foundVolumes" != "y" ]; then
-# 	read -p "Do you want to reboot this system to find volumes? (Y/N): " confirmReboot
-# 	if [ "$confirmReboot" == "Y" ] || [ "$confirmReboot" == "y" ]; then
-# 		reboot
-# 	else
-# 		echo "Exiting install now..."
-# 		exit 1
-#     fi
-# fi
-# echo
 
 # Creating list of Hitachi SAN Disks and Non-Hitachi Disks on the system
 echo "#########################################################################"
@@ -170,6 +147,7 @@ echo "# Getting list of Hitachi SAN Disks and Non-Hitachi Disks on the system #"
 echo "#########################################################################"
 
 # Create array to hold disk IDs and array to hold seen disk Ids
+diskDeviceArray=()
 diskIdArray=()
 blackListDiskIdArray=()
 declare -A seenIds
@@ -182,7 +160,8 @@ for disk in $(ls /dev/sd?); do
 			# echo "Found disk: $diskId"
 			if [[ -z "${seenIds[$diskId]}" ]]; then
 				# echo "Found unique disk: $diskId"
-				diskIdArray+=("$diskId")
+				diskDeviceArray+=("$disk")
+                diskIdArray+=("$diskId")
 				seenIds[$diskId]=1
 			fi
         else
@@ -198,6 +177,7 @@ done
 diskNames=()
 # Print found Volume IDs
 echo "Found following Hitachi SAN Volume IDs and enabled them for multipath support:"
+
 for diskId in ${diskIdArray[@]}; do
 	echo -e "\t$diskId"
     correctVolName="N"
