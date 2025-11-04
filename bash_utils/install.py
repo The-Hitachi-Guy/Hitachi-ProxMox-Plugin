@@ -177,7 +177,7 @@ def configure_dlm_for_cluster() -> bool:
     Returns:
     - True if configuration was successful, False otherwise
     """
-    
+    print()
     print("##################################################")
     print("# Correcting DLM for Cluster #")
     print("##################################################")
@@ -209,7 +209,7 @@ def configure_dlm_for_cluster() -> bool:
         return False
     
     # Restart dlm service
-    print("systemctl restart dlm")
+    print("RUNNING: systemctl restart dlm")
     try:
         subprocess.run(['systemctl', 'restart', 'dlm'], check=True)
     except subprocess.CalledProcessError as e:
@@ -217,7 +217,7 @@ def configure_dlm_for_cluster() -> bool:
         return False
     
     # Stop dlm service
-    print("systemctl stop dlm")
+    print("RUNNING: systemctl stop dlm")
     try:
         subprocess.run(['systemctl', 'stop', 'dlm'], check=True)
     except subprocess.CalledProcessError as e:
@@ -225,14 +225,14 @@ def configure_dlm_for_cluster() -> bool:
         return False
     
     # Remove gfs2 module
-    print("rmmod gfs2")
+    print("RUNNING: rmmod gfs2")
     try:
         subprocess.run(['rmmod', 'gfs2'], check=True)
     except subprocess.CalledProcessError:
         print("Warning: Could not remove gfs2 module (may not be loaded)")
     
     # Remove dlm module
-    print("rmmod dlm")
+    print("RUNNING: rmmod dlm")
     try:
         subprocess.run(['rmmod', 'dlm'], check=True)
     except subprocess.CalledProcessError:
@@ -243,7 +243,7 @@ def configure_dlm_for_cluster() -> bool:
     time.sleep(3)
     
     # Restart udev service
-    print("systemctl restart udev")
+    print("RUNNING: systemctl restart udev")
     try:
         subprocess.run(['systemctl', 'restart', 'udev'], check=True)
     except subprocess.CalledProcessError as e:
@@ -255,7 +255,7 @@ def configure_dlm_for_cluster() -> bool:
     time.sleep(3)
     
     # Start dlm service
-    print("systemctl start dlm")
+    print("RUNNING: systemctl start dlm")
     try:
         subprocess.run(['systemctl', 'start', 'dlm'], check=True)
     except subprocess.CalledProcessError as e:
