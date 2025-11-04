@@ -51,7 +51,7 @@ def handleNeededPackages():
     Returns:
         bool: True if all packages are installed successfully, False otherwise
     """
-    packages=["vim", "multipath-tools*", "parted", "dlm-controld", "gfs2-utils", "git"]
+    packages=["vim", "multipath-tools", "multipath-tools-boot", "parted", "dlm-controld", "gfs2-utils", "git"]
     for package in packages:
         if not is_package_installed(package):
             print(f"Package {package} is not installed. Installing...")

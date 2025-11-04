@@ -101,7 +101,7 @@ fi
 echo "##############################"
 echo "# Installing needed packages #"
 echo "##############################"
-apt update && apt install vim multipath-tools* parted dlm-controld gfs2-utils -y
+apt update && apt install vim multipath-tools* parted dlm-controld gfs2-utils git -y
 echo
 
 # Correcting DLM configuration for cluster
