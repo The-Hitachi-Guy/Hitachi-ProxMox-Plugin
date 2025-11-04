@@ -1,4 +1,4 @@
-import sys, os, json, re, subprocess, argparse, socket
+import sys, os, json, re, subprocess, argparse, socket, time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -6,6 +6,7 @@ def main(config: dict = None):
     hostname = socket.gethostname()
     getServerType()
     handleNeededPackages()
+    configure_dlm_for_cluster()
     
     # Currently no Python implementation, using bash script
     # script_path = os.path.join(os.path.dirname(__file__), 'install.sh')
@@ -99,11 +100,6 @@ def install_package(package_name: str, force_update: bool = False, update_thresh
         Bool: True if package was installed successfully, False otherwise
     """
     
-    # Check if running as root
-    if os.geteuid() != 0:
-        print("Error: This function requires root privileges. Run with sudo.")
-        return False
-    
     # Check if apt update is needed
     if should_update_apt(update_threshold_hours) or force_update:
         print("Updating apt cache...")
@@ -172,10 +168,112 @@ def should_update_apt(threshold_hours: int = 24) -> bool:
     
     # If we can't determine, assume update is needed
     return True
+
+def configure_dlm_for_cluster() -> bool:
+    """
+    Configure DLM (Distributed Lock Manager) for cluster.
+    Adds DLM configuration and restarts necessary services.
     
+    Returns:
+    - True if configuration was successful, False otherwise
+    """
+    
+    print("##################################################")
+    print("# Correcting DLM for Cluster #")
+    print("##################################################")
+    
+    # Add DLM configuration if not already present
+    dlm_config_file = "/etc/default/dlm"
+    dlm_config_line = 'DLM_CONTROLD_OPTS="--enable_fencing 0"'
+    
+    try:
+        # Check if the line already exists in the file
+        line_exists = False
+        try:
+            with open(dlm_config_file, 'r') as f:
+                if dlm_config_line in f.read():
+                    line_exists = True
+        except FileNotFoundError:
+            pass  # File doesn't exist, will be created
+        
+        # Add the line if it doesn't exist
+        if not line_exists:
+            with open(dlm_config_file, 'a') as f:
+                f.write(f"{dlm_config_line}\n")
+            print(f"Added configuration to {dlm_config_file}")
+        else:
+            print(f"Configuration already exists in {dlm_config_file}")
+    
+    except Exception as e:
+        print(f"Error updating DLM configuration: {e}")
+        return False
+    
+    # Restart dlm service
+    print("systemctl restart dlm")
+    try:
+        subprocess.run(['systemctl', 'restart', 'dlm'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting dlm: {e}")
+        return False
+    
+    # Stop dlm service
+    print("systemctl stop dlm")
+    try:
+        subprocess.run(['systemctl', 'stop', 'dlm'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error stopping dlm: {e}")
+        return False
+    
+    # Remove gfs2 module
+    print("rmmod gfs2")
+    try:
+        subprocess.run(['rmmod', 'gfs2'], check=True)
+    except subprocess.CalledProcessError:
+        print("Warning: Could not remove gfs2 module (may not be loaded)")
+    
+    # Remove dlm module
+    print("rmmod dlm")
+    try:
+        subprocess.run(['rmmod', 'dlm'], check=True)
+    except subprocess.CalledProcessError:
+        print("Warning: Could not remove dlm module (may not be loaded)")
+    
+    # Sleep for 3 seconds
+    print("Sleeping for 3 seconds...")
+    time.sleep(3)
+    
+    # Restart udev service
+    print("systemctl restart udev")
+    try:
+        subprocess.run(['systemctl', 'restart', 'udev'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting udev: {e}")
+        return False
+    
+    # Sleep for 3 seconds
+    print("Sleeping for 3 seconds...")
+    time.sleep(3)
+    
+    # Start dlm service
+    print("systemctl start dlm")
+    try:
+        subprocess.run(['systemctl', 'start', 'dlm'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error starting dlm: {e}")
+        return False
+    
+    print()
+    print("DLM configuration completed successfully")
+    return True
+
 if __name__ == "__main__":
-   parser = argparse.ArgumentParser(description="Hitachi SAN Installation Conifguration Script created from first Proxmox node setup.")
-   parser.add_argument('--config', type=str, help='Path to Hitachi configuration JSON file', required=False)
-   args = parser.parse_args()
-   config = load_config(args.config) if args.config else None
-   main(config)
+   if os.geteuid() != 0:
+        print("Error: This function requires root privileges. Run with sudo.")
+   else:
+        parser = argparse.ArgumentParser(description="Hitachi SAN Installation Conifguration Script created from first Proxmox node setup.")
+        parser.add_argument('--config', type=str, help='Path to Hitachi configuration JSON file', required=False)
+        args = parser.parse_args()
+        config = load_config(args.config) if args.config else None
+        main(config)
+   
+   
