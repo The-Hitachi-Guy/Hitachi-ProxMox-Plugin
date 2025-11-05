@@ -615,7 +615,7 @@ def get_scsi_id_sd_devices() -> list:
         for scsi_id in scsi_ids:
             scsi_id_sd_device = {
                 'scsi_id': scsi_id,
-                'sd_devices': []
+                'sd_devices': [],
             }
 
             for device in raw_devices:
@@ -681,6 +681,31 @@ def select_disks_for_multipathing()->None:
     print(f"{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
     for volume in hitachi_volumes:
         print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
+
+    selected_volumes = []
+    while True:
+        print("Current Selected Volumes:")
+        for idx, volume in enumerate(selected_volumes):
+            print(f"{idx+1:<3}) {volume['scsi_id']}")
+        print()
+        selected_indexes_raw = input("Enter list of volumes to be added to Multipath List, comma seperated (i.e. 1,2,5,8): ")
+        selected_indexes = []
+        for entry in selected_indexes_raw.split(','):
+            try:
+                selected_indexes.append(int(entry.strip()))
+            except:
+                print("Found invalid number entry! Try again...")
+                print()
+        print("\nFollowing Volumes Selected:")
+        print(f"{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
+        for index in selected_indexes:
+            volume = hitachi_volumes[index]
+            print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
+        if(ask_yes_no("\nIs this correct? All other volumes will be excluded from multiapthing!")):
+            selected_volumes = []
+            for index in selected_indexes:
+                selected_volumes.append(hitachi_volumes[index])
+
 
 if __name__ == "__main__":
    if os.geteuid() != 0:
