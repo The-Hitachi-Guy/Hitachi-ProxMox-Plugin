@@ -601,6 +601,9 @@ def get_scsi_id_sd_devices() -> list:
                     if scsi_id_result.returncode == 0:
                         device['scsi_id'] = scsi_id_result.stdout.strip()
                         scsi_ids.append(device['scsi_id'])
+                    else:
+                        print(f"Warning: Could not get SCSI ID for /dev/{device_name}")
+                        print(f"  {scsi_id_result.stderr.strip()}")
                     raw_devices.append(device)
 
         scsi_ids = list(set(scsi_ids.sort()))  # Make unique and sort
