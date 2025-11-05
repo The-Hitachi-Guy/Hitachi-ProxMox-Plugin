@@ -4,9 +4,18 @@ from pathlib import Path
 
 def main(config: dict = None):
     hostname = socket.gethostname()
-    getServerType()
+    serverType = getServerType()
+    cluster_info = {}
+    if serverType == 'cluster':
+        cluster_info = get_cluster_information()
     handleNeededPackages()
-    configure_dlm_for_cluster()
+    # configure_dlm_for_cluster()
+    print_wwpn()
+    print()
+    input("Hit enter to continue once the volumes are attached to the server...")
+    verify_disks_found()
+    select_disks_for_multipathing()
+
     
     # Currently no Python implementation, using bash script
     # script_path = os.path.join(os.path.dirname(__file__), 'install.sh')
@@ -22,6 +31,25 @@ def load_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
         return json.load(f)
     
+def ask_yes_no(question: str) -> bool:
+    """
+    Ask a yes/no question and return True for yes, False for no.
+    
+    Parameters:
+    - question: Question to ask the user
+    
+    Returns:
+    - True if user answers yes, False if user answers no
+    """
+    while True:
+        answer = input(f"{question} (Y/N): ").strip().upper()
+        if answer in ['Y', 'YES']:
+            return True
+        elif answer in ['N', 'NO']:
+            return False
+        else:
+            print("Please answer Y or N")
+
 def getServerType() -> str:
     """
     Ask user if the server is standalone or a cluster node.
@@ -44,6 +72,76 @@ def getServerType() -> str:
             return 'cluster'
         else:
             print("Invalid choice. Please enter 1 or 2.")
+
+def get_cluster_information() -> dict:
+    """
+    Retrieves Proxmox Cluster information that this node is a part of.
+    
+    Returns:
+        dict: Dictionary with cluster information:
+        {
+            'cluster_name': str,
+            'cluster_node_count': int,
+            'is_first_cluster_node': bool,
+            'cluster_node_list': list
+        }
+    """
+    cluster_info = {
+        'cluster_name': "",
+        'cluster_node_count': 0,
+        'is_first_cluster_node': False,
+        'cluster_node_list': []
+    }
+    
+    # Check if node is part of a Proxmox cluster
+    try:
+        result = subprocess.run(
+            ['pvecm', 'status'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse cluster name
+        for line in result.stdout.split('\n'):
+            if 'Name:' in line:
+                cluster_info['cluster_name'] = line.split(':', 1)[1].strip()
+            elif 'Nodes:' in line:
+                try:
+                    cluster_info['cluster_node_count'] = int(line.split(':', 1)[1].strip())
+                except ValueError:
+                    cluster_info['cluster_node_count'] = 0
+        
+        # Get cluster node list
+        nodes_result = subprocess.run(
+            ['pvecm', 'nodes'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse node list (skip first 4 lines of header)
+        lines = nodes_result.stdout.split('\n')
+        for line in lines[4:]:  # Skip header lines
+            parts = line.split()
+            if len(parts) >= 3:
+                cluster_info['cluster_node_list'].append(parts[2])
+        
+        # Ask if this is the first node to be configured
+        cluster_name = cluster_info['cluster_name']
+        is_first = ask_yes_no(
+            f"Is this node the first node to be configured for SAN Storage in cluster '{cluster_name}'?"
+        )
+        cluster_info['is_first_cluster_node'] = is_first
+        
+    except subprocess.CalledProcessError:
+        print("ERROR: This node is NOT part of a Proxmox cluster. Exiting...")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("ERROR: pvecm command not found. Is Proxmox VE installed? Exiting...")
+        sys.exit(1)
+    
+    return cluster_info
 
 def handleNeededPackages():
     """
@@ -265,6 +363,315 @@ def configure_dlm_for_cluster() -> bool:
     print()
     print("DLM configuration completed successfully")
     return True
+
+def print_wwpn() -> bool:
+    """
+    Print the WWPN (World Wide Port Name) of all Fibre Channel HBA ports.
+    
+    Returns:
+        bool: True if WWPNs were found and printed, False otherwise
+    """
+    print()
+    print("##################################################")
+    print("# Server WWPN Information #")
+    print("##################################################")
+    
+    fc_host_path = Path('/sys/class/fc_host')
+    
+    if fc_host_path.exists():
+        host_dirs = sorted(fc_host_path.glob('host*'))
+        
+        if host_dirs:
+            print("\nFibre Channel HBA WWPNs:")
+            found_wwpn = False
+            
+            for host_dir in host_dirs:
+                wwpn_file = host_dir / 'port_name'
+                wwnn_file = host_dir / 'node_name'
+                
+                try:
+                    if wwpn_file.exists():
+                        with open(wwpn_file, 'r') as f:
+                            wwpn = f.read().strip()
+                        
+                        # Also get WWNN if available
+                        wwnn = ""
+                        if wwnn_file.exists():
+                            with open(wwnn_file, 'r') as f:
+                                wwnn = f.read().strip()
+                        
+                        # Format WWPN for better readability (remove 0x prefix)
+                        wwpn_formatted = wwpn.replace('0x', '').upper()
+                        wwnn_formatted = wwnn.replace('0x', '').upper() if wwnn else "N/A"
+                        
+                        print(f"\n  {host_dir.name}:")
+                        print(f"    WWPN: {wwpn_formatted}")
+                        print(f"    WWNN: {wwnn_formatted}")
+                        
+                        found_wwpn = True
+                
+                except Exception as e:
+                    print(f"  Error reading {host_dir.name}: {e}")
+            
+            if found_wwpn:
+                print()
+                return True
+            else:
+                print("  No WWPNs found in /sys/class/fc_host/")
+        else:
+            print("\nNo Fibre Channel HBA hosts found in /sys/class/fc_host/")
+
+def verify_disks_found() -> bool:
+    """
+    Verify that SAN volumes are found on the system.
+    Prompts user to rescan or reboot if volumes are not found.
+    
+    Returns:
+        bool: True if disks are verified, False otherwise
+    """
+    disks_verified = False
+    
+    while not disks_verified:
+        list_disks()
+        found_volumes = ask_yes_no("Are SAN volume(s) found?")
+        
+        if found_volumes:
+            disks_verified = True
+        else:
+            preform_rescan_disks = ask_yes_no("Do you want to rescan SCSI bus to find volumes?")
+            
+            if preform_rescan_disks:
+                rescan_disks()
+            else:
+                confirm_reboot = ask_yes_no("Do you want to reboot this system to find volumes?")
+
+                if confirm_reboot:
+                    print("Rebooting system...")
+                    try:
+                        subprocess.run(['reboot'], check=True)
+                    except subprocess.CalledProcessError as e:
+                        print(f"Error rebooting system: {e}")
+                        return False
+                else:
+                    print("Exiting install now...")
+                    sys.exit(1)
+    
+    print(file=sys.stderr)
+    return True
+
+
+def list_disks():
+    """List all available disks on the system."""
+    print()
+    print("###################")
+    print("# Available Disks #")
+    print("###################")
+    
+    try:
+        # List block devices
+        result = subprocess.run(
+            ['lsblk', '-o', 'NAME,TYPE,MODEL,SIZE,WWN'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print(result.stdout)
+    
+    except FileNotFoundError:
+        print("Error: lsblk command not found")
+    except subprocess.CalledProcessError as e:
+        print(f"Error listing disks: {e}")
+
+
+def rescan_disks():
+    """Rescan SCSI bus to detect new volumes."""
+    print()
+    print("#######################")
+    print("# Rescanning SCSI Bus #")
+    print("#######################")
+    
+    try:
+        # Rescan all SCSI hosts
+        result = subprocess.run(
+            ['rescan-scsi-bus.sh', '--largelun', '--multipath', '--issue-lip-wait=10', '--alltargets'],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        if result.returncode == 0:
+            print("SCSI bus rescanned successfully")
+            print(result.stdout)
+        else:
+            # Try alternative method if rescan-scsi-bus.sh is not available
+            print("Attempting manual SCSI rescan...")
+            
+            # Find all SCSI hosts and rescan them
+            from pathlib import Path
+            scsi_host_path = Path('/sys/class/scsi_host')
+            
+            if scsi_host_path.exists():
+                for host in scsi_host_path.glob('host*'):
+                    scan_file = host / 'scan'
+                    if scan_file.exists():
+                        try:
+                            with open(scan_file, 'w') as f:
+                                f.write('- - -\n')
+                            print(f"Rescanned {host.name}")
+                        except Exception as e:
+                            print(f"Error rescanning {host.name}: {e}")
+                
+                print("\nManual SCSI rescan completed")
+            else:
+                print("Error: Cannot find SCSI hosts")
+    
+    except FileNotFoundError:
+        print("rescan-scsi-bus.sh not found, attempting manual rescan...")
+        # Fallback to manual rescan (code above)
+        from pathlib import Path
+        scsi_host_path = Path('/sys/class/scsi_host')
+        
+        if scsi_host_path.exists():
+            for host in scsi_host_path.glob('host*'):
+                scan_file = host / 'scan'
+                if scan_file.exists():
+                    try:
+                        with open(scan_file, 'w') as f:
+                            f.write('- - -\n')
+                        print(f"Rescanned {host.name}")
+                    except Exception as e:
+                        print(f"Error rescanning {host.name}: {e}")
+    
+    except Exception as e:
+        print(f"Error during SCSI rescan: {e}")
+    
+    print("\nWaiting for devices to settle...")
+    subprocess.run(['sleep', '3'], check=False)
+
+def get_scsi_id_sd_devices() -> list:
+    """
+    Get list of SCSI IDs, their SD block devices and thier info from lsblk and scsi_id.
+    
+    Returns:
+        list: List of dictionaries with device information
+        [
+            {
+                'scsi_id': str,
+                'sd_devices': list:[str],
+                'size': str,
+                'model': str,
+                'wwn': str
+            }
+        ]
+    """
+    try:
+        result = subprocess.run(
+            ['lsblk', '-d', '-n', '-o', 'NAME,SIZE,MODEL,WWN'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        raw_devices = [] # For holding all raw sd devices
+        scsi_ids = [] # For holding all scsi_ids.. will be made unique later
+        for line in result.stdout.strip().split('\n'):
+            if not line.strip():
+                continue
+            
+            parts = line.split(None, 3)  # Split into max 4 parts
+            if len(parts) >= 3:
+                device_name = parts[0]
+                
+                # Filter only sd* devices
+                if device_name.startswith('sd'):
+                    device = {
+                        'name': device_name,
+                        'size': parts[1] if len(parts) > 1 else 'N/A',
+                        'model': parts[2] if len(parts) > 2 else 'N/A',
+                        'wwn': parts[3] if len(parts) > 3 else 'N/A',
+                        'scsi_id': ""
+                    }
+
+                    scsi_id_result = subprocess.run(
+                        ['/lib/udev/scsi_id', '-g', '-u', '-d', f'/dev/{device_name}'],
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
+                    if scsi_id_result.returncode == 0:
+                        device['scsi_id'] = scsi_id_result.stdout.strip()
+                        scsi_ids.append(device['scsi_id'])
+                    raw_devices.append(device)
+
+        scsi_ids = list(set(scsi_ids.sort()))  # Make unique and sort
+        scsi_id_sd_devices = []
+        
+        # Create mapping of scsi_id to sd devices and thier attributes
+        for scsi_id in scsi_ids:
+            scsi_id_sd_device = {
+                'scsi_id': scsi_id,
+                'sd_devices': []
+            }
+
+            for device in raw_devices:
+                if device['scsi_id'] == scsi_id:
+                    scsi_id_sd_device['sd_devices'].append(device['name'])
+                    if "size" not in scsi_id_sd_device:
+                        scsi_id_sd_device['size'] = device['size']
+                        scsi_id_sd_device['model'] = device['model']
+                        scsi_id_sd_device['wwn'] = device['wwn']
+            scsi_id_sd_devices.append(scsi_id_sd_device)
+
+        return scsi_id_sd_devices
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error running lsblk: {e}")
+        return []
+    except FileNotFoundError:
+        print("Error: lsblk command not found")
+        return []
+    
+def get_hitachi_and_non_hitachi_volumes_from_scsi_id_sd_devices(scsi_id_sd_devices: list) -> list:
+    """
+    Filter Hitachi volumes from the list of SCSI ID and SD devices and returns a list of Hitachi volumes and a list of non-Hitachi volumes.
+    
+    Args:
+        scsi_id_sd_devices: (list) List of dictionaries with SCSI ID and SD device info
+
+    Returns:
+        tuple: (list:hitachi_volumes_list[dict], list:non_hitachi_volumes_list[dict])
+    """
+    hitachi_volumes = []
+    non_hitachi_volumes = []
+    for device in scsi_id_sd_devices:
+        if "OPEN-V" in device.get('model', ''):
+            hitachi_volumes.append(device)
+        else:
+            non_hitachi_volumes.append(device)
+    return (hitachi_volumes, non_hitachi_volumes)
+
+def select_disks_for_multipathing()->None:
+    """
+    Allow user to select disks for multipathing configuration.
+    """
+    
+    print()
+    print("###############################################")
+    print("# Select Disks for Multipathing Configuration #")
+    print("###############################################")
+    
+
+    scsi_id_sd_devices = get_scsi_id_sd_devices()
+    hitachi_volumes, non_hitachi_volumes = get_hitachi_and_non_hitachi_volumes_from_scsi_id_sd_devices(scsi_id_sd_devices)
+    print("Excluded disks from Multipathing: ")
+    print(f"{'SCSI ID':<40} {'SD Devices':<10} {'Size':<10} {'Model':<20} {'WWN':<20}")
+    for disk in non_hitachi_volumes:
+        print(f"{disk['scsi_id']:<40} {', '.join(disk['sd_devices']):<10} {disk.get('size', 'N/A'):<10} {disk.get('model', 'N/A'):<20} {disk.get('wwn', 'N/A'):<20}")
+    
+    print()
+    print("Hitachi Volumes:")
+    for volume in hitachi_volumes:
+        print(f"  SCSI ID: {volume['scsi_id']}, SD Devices: {', '.join(volume['sd_devices'])}, Size: {volume.get('size', 'N/A')}, Model: {volume.get('model', 'N/A')}, WWN: {volume.get('wwn', 'N/A')}")
 
 if __name__ == "__main__":
    if os.geteuid() != 0:
