@@ -671,16 +671,16 @@ def select_disks_for_multipathing()->None:
     print()
     print("Excluded disks from Multipathing: ")
     print("-------------------------------------")
-    print(f"{'SCSI ID':<50} {'SD Devices':<10} {'Size':<10} {'Model':<20} {'WWN':<20}")
+    print(f"{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
     for disk in non_hitachi_volumes:
-        print(f"{disk['scsi_id']:<40} {', '.join(disk['sd_devices']):<10} {disk.get('size', 'N/A'):<10} {disk.get('model', 'N/A'):<20} {disk.get('wwn', 'N/A'):<20}")
-    
+        print(f"{disk['scsi_id']:<50} {', '.join(disk['sd_devices']):<15} {disk.get('size', 'N/A'):<10} {disk.get('model', 'N/A'):<20} {disk.get('wwn', 'N/A'):<20}")
+
     print()
     print("Hitachi Volumes: ")
     print("-------------------------------------")
-    print(f"{'SCSI ID':<50} {'SD Devices':<10} {'Size':<10} {'Model':<20} {'WWN':<20}")
+    print(f"{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
     for volume in hitachi_volumes:
-        print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<10} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
+        print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
 
 if __name__ == "__main__":
    if os.geteuid() != 0:
