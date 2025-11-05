@@ -606,7 +606,9 @@ def get_scsi_id_sd_devices() -> list:
                         print(f"Warning: Could not get SCSI ID for /dev/{device_name}")
                         print(f"  {scsi_id_result.stderr.strip()}")
                     raw_devices.append(device)
-
+        print(scsi_ids)
+        print()
+        print(scsi_ids.sort())
         scsi_ids = list(set(scsi_ids.sort()))  # Make unique and sort
         scsi_id_sd_devices = []
         
