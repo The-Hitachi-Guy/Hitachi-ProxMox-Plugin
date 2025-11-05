@@ -599,6 +599,7 @@ def get_scsi_id_sd_devices() -> list:
                         check=True
                     )
                     if scsi_id_result.returncode == 0:
+                        print(f"Found SCSI ID for /dev/{device_name}: {scsi_id_result.stdout.strip()}")
                         device['scsi_id'] = scsi_id_result.stdout.strip()
                         scsi_ids.append(device['scsi_id'])
                     else:
