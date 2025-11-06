@@ -708,7 +708,8 @@ def select_disks_for_multipathing()->None:
         if(ask_yes_no("\nIs this correct? All other volumes will be excluded from multiapthing!")):
             selected_volumes = []
             rejected_volumes = []
-            for index in selected_indexes.reverse():
+            selected_indexes.reverse()
+            for index in selected_indexes:
                 print(hitachi_volumes.pop(index))
                 selected_volumes.append(hitachi_volumes.pop(index))
             selected_volumes.reverse()
