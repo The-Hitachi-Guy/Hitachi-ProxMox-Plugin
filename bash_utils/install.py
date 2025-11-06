@@ -8,6 +8,7 @@ def main(config: dict = None):
     cluster_info = {}
     if serverType == 'cluster':
         cluster_info = get_cluster_information()
+        print(cluster_info)
     handleNeededPackages()
     # configure_dlm_for_cluster()
     print_wwpn()
