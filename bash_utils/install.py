@@ -16,7 +16,7 @@ def main(config: dict = None):
     verify_disks_found()
     selected_volumes, rejected_volumes = select_disks_for_multipathing()
     selected_volumes = get_aliases_for_volumes(selected_volumes)
-
+    mountRoot = get_mount_root()
     
     # Currently no Python implementation, using bash script
     # script_path = os.path.join(os.path.dirname(__file__), 'install.sh')
@@ -722,6 +722,25 @@ def select_disks_for_multipathing()->None:
                 
             return selected_volumes, rejected_volumes
 
+def get_mount_root()->str:
+    """
+    Asks user for the directory to create subdirectories for mounting Hitachi volumes
+
+    Returns:
+        str: Filepath to root directory to be used for Hitachi volume mounting
+    """
+    while True:
+        mountRoot = input("Enter file path to root directory for mounting Hitachi volumes (Default: /mnt): ")
+        if mountRoot == "":
+            mountRoot = "/mnt"
+        if ask_yes_no(f"Use '{mountRoot}' as root for mounting Hitachi storage on this system?"):
+            if Path.exists(mountRoot):
+                return mountRoot
+            else:
+                if ask_yes_no("Directory doesn't exist. Do you want to create it?"):
+                    Path.mkdir(mountRoot)
+                    return mountRoot
+
 def get_aliases_for_volumes(volumes:list)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to
@@ -748,6 +767,24 @@ def get_aliases_for_volumes(volumes:list)->dict:
 
     return volumes
 
+def create_config_file(hostname, servertype, multipath_volumes, excluded_volumes, cluster_info=None)->bool:
+    """
+    Creates JSON config file to be used by this node or other nodes to generate multipath.conf files
+
+    Args:
+        hostname: (str) Host name of the server
+        servertype: (str) "standalone" or "cluster"
+        multipath_volumes: (list->dict) List of volumes to enable and configure multipath on
+        excluded_volumes: (list->dict) List of volumes to remove or prevent multipath services on
+        cluster_info: (dict): Information of the Proxmox Cluster and its cluster nodes
+
+    Returns:
+        bool: True if "hitachi_config.json" is created/overwritten, false otherwise
+    """
+    hitachi_config = {
+        'serverName': hostname,
+
+    }
 
 if __name__ == "__main__":
    if os.geteuid() != 0:
