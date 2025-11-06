@@ -678,13 +678,13 @@ def select_disks_for_multipathing()->None:
     print()
     print("Hitachi Volumes: ")
     print("-------------------------------------")
-    print(f"{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
-    for volume in hitachi_volumes:
-        print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
+    print(f"{'':<4}{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
+    for idx, volume in enumerate(hitachi_volumes):
+        print(f"{idx+1:<4}{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
 
     selected_volumes = []
     while True:
-        print("Current Selected Volumes:")
+        print("\nCurrent Selected Volumes:")
         for idx, volume in enumerate(selected_volumes):
             print(f"{idx+1:<3}) {volume['scsi_id']}")
         print()
@@ -692,7 +692,7 @@ def select_disks_for_multipathing()->None:
         selected_indexes = []
         for entry in selected_indexes_raw.split(','):
             try:
-                selected_indexes.append(int(entry.strip()))
+                selected_indexes.append(int(entry.strip())-1)
             except:
                 print("Found invalid number entry! Try again...")
                 print()
