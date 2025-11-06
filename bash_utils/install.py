@@ -680,7 +680,7 @@ def select_disks_for_multipathing()->None:
     print("-------------------------------------")
     print(f"{'':<4}{'SCSI ID':<50} {'SD Devices':<15} {'Size':<10} {'Model':<20} {'WWN':<20}")
     for idx, volume in enumerate(hitachi_volumes):
-        print(f"{idx+1:<4}{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
+        print(f"{str(idx+1)+')':<4}{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
 
     selected_volumes = []
     while True:
@@ -703,8 +703,17 @@ def select_disks_for_multipathing()->None:
             print(f"{volume['scsi_id']:<50} {', '.join(volume['sd_devices']):<15} {volume.get('size', 'N/A'):<10} {volume.get('model', 'N/A'):<20} {volume.get('wwn', 'N/A'):<20}")
         if(ask_yes_no("\nIs this correct? All other volumes will be excluded from multiapthing!")):
             selected_volumes = []
+            rejected_volumes = []
             for index in selected_indexes:
-                selected_volumes.append(hitachi_volumes[index])
+                selected_volumes.append(hitachi_volumes.pop())
+            rejected_volumes = non_hitachi_volumes + hitachi_volumes
+
+            print("\nRejected volumes:")
+            for volume in rejected_volumes:
+                print(volume['scsi_id'])
+            print()
+                
+            return selected_volumes, rejected_volumes
 
 
 if __name__ == "__main__":
