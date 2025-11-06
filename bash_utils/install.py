@@ -8,17 +8,13 @@ def main(config: dict = None):
     cluster_info = {}
     if serverType == 'cluster':
         cluster_info = get_cluster_information()
-        print(f"\tCluster Name: {cluster_info['cluster_name']}")
-        print(f"\tCluster Node Count: {cluster_info['cluster_node_count']}")
-        print(f"\tCluster Nodes: {str.join(", ", cluster_info['cluster_node_list'])}")
-        print(f"\tIs First Node to be Configured: {cluster_info['is_first_cluster_node']}")
     handleNeededPackages()
     # configure_dlm_for_cluster()
     print_wwpn()
     print()
     input("Hit enter to continue once the volumes are attached to the server...")
     verify_disks_found()
-    select_disks_for_multipathing()
+    selected_volumes, rejected_volumes = select_disks_for_multipathing()
 
     
     # Currently no Python implementation, using bash script
@@ -130,11 +126,15 @@ def get_cluster_information() -> dict:
             parts = line.split()
             if len(parts) >= 3:
                 cluster_info['cluster_node_list'].append(parts[2])
+
+        print(f"\tCluster Name: {cluster_info['cluster_name']}")
+        print(f"\tCluster Node Count: {cluster_info['cluster_node_count']}")
+        print(f"\tCluster Nodes: {str.join(", ", cluster_info['cluster_node_list'])}")
         
         # Ask if this is the first node to be configured
         cluster_name = cluster_info['cluster_name']
         is_first = ask_yes_no(
-            f"Is this node the first node to be configured for SAN Storage in cluster '{cluster_name}'?"
+            f"\nIs this node the first node to be configured for SAN Storage in cluster '{cluster_name}'?"
         )
         cluster_info['is_first_cluster_node'] = is_first
         
@@ -710,7 +710,6 @@ def select_disks_for_multipathing()->None:
             rejected_volumes = []
             selected_indexes.sort(reverse=True)
             for index in selected_indexes:
-                print(hitachi_volumes[index])
                 selected_volumes.append(hitachi_volumes.pop(index))
             selected_volumes.reverse()
             rejected_volumes = non_hitachi_volumes + hitachi_volumes
