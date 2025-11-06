@@ -15,7 +15,7 @@ def main(config: dict = None):
     input("Hit enter to continue once the volumes are attached to the server...")
     verify_disks_found()
     selected_volumes, rejected_volumes = select_disks_for_multipathing()
-    selected_volumes = configure_multipath_for_volumes(selected_volumes)
+    selected_volumes = get_aliases_for_volumes(selected_volumes)
 
     
     # Currently no Python implementation, using bash script
@@ -722,7 +722,7 @@ def select_disks_for_multipathing()->None:
                 
             return selected_volumes, rejected_volumes
 
-def configure_multipath_for_volumes(volumes:list)->dict:
+def get_aliases_for_volumes(volumes:list)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to
     created the multipath.conf file
@@ -738,15 +738,14 @@ def configure_multipath_for_volumes(volumes:list)->dict:
     print("# Configure Multipath Volumes #")
     print("###############################")
     for volume in volumes:
-        print(f"{volume['scsi_id']:<35}{volume['size']}")
+        print(f"{volume['scsi_id']:<35}Size: {volume['size']}")
         while True:
             alias = input("\tEnter name for volume alias: ")
             if(ask_yes_no(f"\tIs alias '{alias}' correct?")):
                 volume['alias'] = alias
+                print()
                 break
 
-    for volume in volumes:
-        print(volume)
     return volumes
 
 
