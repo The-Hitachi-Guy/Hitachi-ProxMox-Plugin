@@ -8,7 +8,10 @@ def main(config: dict = None):
     cluster_info = {}
     if serverType == 'cluster':
         cluster_info = get_cluster_information()
-        print(cluster_info)
+        print(f"\tCluster Name: {cluster_info['cluster_name']}")
+        print(f"\tCluster Node Count: {cluster_info['cluster_node_count']}")
+        print(f"\tCluster Nodes: {str.join(", ", cluster_info['cluster_node_list'])}")
+        print(f"\tIs First Node to be Configured: {cluster_info['is_first_cluster_node']}")
     handleNeededPackages()
     # configure_dlm_for_cluster()
     print_wwpn()
