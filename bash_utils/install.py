@@ -709,7 +709,7 @@ def select_disks_for_multipathing()->None:
             selected_volumes = []
             rejected_volumes = []
             for index in selected_indexes:
-                selected_volumes.append(hitachi_volumes.pop())
+                selected_volumes.append(hitachi_volumes.pop(index))
             rejected_volumes = non_hitachi_volumes + hitachi_volumes
 
             print("\nRejected volumes:")
