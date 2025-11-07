@@ -777,11 +777,11 @@ def get_aliases_for_volumes(volumes:list, mountRoot:str=None)->dict:
         # Get volume usage
         while True:
             usage = input("\tHow will volume be used? (datastore, rdm): ")
-            if usage.lower == "datastore" or usage.lower == "rdm":
-                volume['volumeType'] = usage.lower
+            if usage.lower() == "datastore" or usage.lower() == "rdm":
+                volume['volumeType'] = usage.lower()
                 break
             else:
-                print("Invalid volume usage!")
+                print("\tInvalid volume usage!")
         if volume['volumeType'] == 'datastore':
             volume['datastoreInfo'] = {
                 "fileSystem": "gfs2",
