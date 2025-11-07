@@ -20,7 +20,7 @@ def main(config: dict = None):
         verify_disks_found()
         selected_volumes, rejected_volumes = select_disks_for_multipathing()
         mountRoot = get_mount_root()
-        selected_volumes = get_aliases_for_volumes(selected_volumes)
+        selected_volumes = configure_volumes_for_multipath(selected_volumes, mountRoot)
 
         create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
     
@@ -750,7 +750,7 @@ def get_mount_root()->str:
                     Path.mkdir(mountRoot)
                     return mountRoot
 
-def get_aliases_for_volumes(volumes:list, mountRoot:str=None)->dict:
+def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to
     created the multipath.conf file
