@@ -19,10 +19,10 @@ def main(config: dict = None):
         input("Hit enter to continue once the volumes are attached to the server...")
         verify_disks_found()
         selected_volumes, rejected_volumes = select_disks_for_multipathing()
-        selected_volumes = get_aliases_for_volumes(selected_volumes)
         mountRoot = get_mount_root()
+        selected_volumes = get_aliases_for_volumes(selected_volumes)
 
-        create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mount_point, cluster_info)
+        create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
     
     return 0
 
