@@ -22,6 +22,9 @@ def main(config: dict = None):
         mountRoot = get_mount_root()
         selected_volumes = configure_volumes_for_multipath(selected_volumes, mountRoot)
 
+        for volume in selected_volumes:
+            print(json.dump(volume,indent=4))
+
         create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
     
     return 0
@@ -750,6 +753,47 @@ def get_mount_root()->str:
                     Path.mkdir(mountRoot)
                     return str(mountRoot)
 
+def get_vms()->list:
+    """
+    Retrieves list of virtual machines from the Proxmox environment
+
+    Returns:
+        list (dict): List of VM dictionaries
+        [
+            {
+                'vmId': int,
+                'vmName': str
+            }
+        ]
+    """
+    # Get list of VMs
+    try:
+        result = subprocess.run(
+            ['qm', 'list'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        vms = []
+        lines = result.stdout.strip().split('\n')[1:] # Skipping header line
+        for line in lines:
+            parts = line.split()
+            vm = {
+                'vmId': int(parts[0].strip()),
+                'vmName': parts[1].strip()
+            }
+            vms.append(vm)
+        return vms
+        
+    except subprocess.CalledProcessError:
+        print("ERROR: This node is NOT part of a Proxmox cluster. Exiting...")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("ERROR: pvecm command not found. Is Proxmox VE installed? Exiting...")
+        sys.exit(1)
+
+
 def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to
@@ -788,8 +832,32 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
 				"mountPoint": mountRoot + "/" + volume['alias'],
 				"datastoreName": volume['alias']
             }
+        else:
+            rdmInfo = {
+                'diskId': "scsi-"+volume['scsi_id']
+            }
+            vms = get_vms()
+            selected_vms = []
+            while True:
+                print(f"{'':<3}{'VM_ID':<6}{'VM_NAME':<30}")
+                for idx, vm in enumerate(vms):
+                    print(f"{str(idx+1)+')':<3}{vm['vmId']:<6}{vm['vmName']:<30}")
+                print()
+                selected_vms_indexes = input("Enter list of VMs the RDM will be attached to, comma seperated (i.e. 1,2,5,8): ")
+                selected_vms_indexes = selected_vms_indexes.strip().split(',')
+                if len(selected_vms_indexes) > 0:
+                    for index in selected_vms_indexes:
+                        try:
+                            index = int(index.strip())-1
+                        except:
+                            print(f"Invalid entry [{index}]... Enter only numbers and commas")
 
+                        selected_vms.append(vms[index])
+                    rdmInfo['vms'] = selected_vms
 
+                else:
+                    print(f"Invalid entry... Enter only numbers and commas")
+                volume['rdmInfo'] = rdmInfo
 
     return volumes
 
