@@ -23,7 +23,7 @@ def main(config: dict = None):
         selected_volumes = configure_volumes_for_multipath(selected_volumes, mountRoot)
 
         for volume in selected_volumes:
-            print(json.dump(volume,indent=4))
+            print(json.dumps(volume,indent=4))
 
         create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
     
