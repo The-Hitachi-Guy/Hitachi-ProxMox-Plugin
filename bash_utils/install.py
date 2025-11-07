@@ -833,7 +833,7 @@ def get_vm_scsi_devices(vm:dict)->list:
                 'scsiId': scsi_key,
                 'device': vm_config[scsi_key]
             }
-            scsi_devices.append(scsi_devices)
+            scsi_devices.append(scsi_device)
         return scsi_devices
 
     except subprocess.CalledProcessError:
