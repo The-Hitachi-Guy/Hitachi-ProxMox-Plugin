@@ -773,11 +773,10 @@ def get_aliases_for_volumes(volumes:list, mountRoot:str=None)->dict:
             alias = input("\tEnter name for volume alias: ")
             if(ask_yes_no(f"\tIs alias '{alias}' correct?")):
                 volume['alias'] = alias
-                print()
                 break
         # Get volume usage
         while True:
-            usage = input("How will volume be used? (datastore, rdm)?")
+            usage = input("\tHow will volume be used? (datastore, rdm): ")
             if usage.lower == "datastore" or usage.lower == "rdm":
                 volume['volumeType'] = usage.lower
                 break
