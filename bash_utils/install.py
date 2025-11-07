@@ -812,7 +812,7 @@ def get_vm_scsi_devices(vm:dict)->list:
             }
         ]
     """
-
+    print(f"Getting SCSI devices for VM {vm['vmName']}...")
     try:
         result = subprocess.run(
             ['pvesh', 'get', f'/node/{vm['node']}/qemu/{vm['vmId']}/config', '--output-format', 'json'],
