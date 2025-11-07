@@ -2,6 +2,7 @@
 	"serverName": "pve1",
 	"mountRoot": "/mnt",
 	"isClusterNode": false,
+	"clusterConfig": {},
 	"multipathData": {
 		"multipathVolumes": {
 			"1234": {

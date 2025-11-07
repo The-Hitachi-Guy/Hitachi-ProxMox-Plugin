@@ -3,29 +3,27 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 def main(config: dict = None):
-    hostname = socket.gethostname()
-    serverType = getServerType()
-    cluster_info = {}
-    if serverType == 'cluster':
-        cluster_info = get_cluster_information()
-    handleNeededPackages()
-    # configure_dlm_for_cluster()
-    print_wwpn()
-    print()
-    input("Hit enter to continue once the volumes are attached to the server...")
-    verify_disks_found()
-    selected_volumes, rejected_volumes = select_disks_for_multipathing()
-    selected_volumes = get_aliases_for_volumes(selected_volumes)
-    mountRoot = get_mount_root()
+    if config:
+        hostname = socket.gethostname()
+        handleNeededPackages()
+    else:
+        hostname = socket.gethostname()
+        serverType = getServerType()
+        cluster_info = {}
+        if serverType == 'cluster':
+            cluster_info = get_cluster_information()
+        handleNeededPackages()
+        # configure_dlm_for_cluster()
+        print_wwpn()
+        print()
+        input("Hit enter to continue once the volumes are attached to the server...")
+        verify_disks_found()
+        selected_volumes, rejected_volumes = select_disks_for_multipathing()
+        selected_volumes = get_aliases_for_volumes(selected_volumes)
+        mountRoot = get_mount_root()
+
+        create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mount_point, cluster_info)
     
-    # Currently no Python implementation, using bash script
-    # script_path = os.path.join(os.path.dirname(__file__), 'install.sh')
-    # process = subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # stdout, stderr = process.communicate()
-    # if process.returncode != 0:
-    #     print(f"Error executing install script: {stderr.decode()}", file=sys.stderr)
-    #     sys.exit(process.returncode)
-    # print(stdout.decode())
     return 0
 
 def load_config(config_path: str) -> dict:
@@ -83,14 +81,14 @@ def get_cluster_information() -> dict:
         {
             'cluster_name': str,
             'cluster_node_count': int,
-            'is_first_cluster_node': bool,
+            'first_cluster_node': str,
             'cluster_node_list': list
         }
     """
     cluster_info = {
         'cluster_name': "",
         'cluster_node_count': 0,
-        'is_first_cluster_node': False,
+        'first_cluster_node': "",
         'cluster_node_list': []
     }
     
@@ -126,17 +124,27 @@ def get_cluster_information() -> dict:
         for line in lines[4:]:  # Skip header lines
             parts = line.split()
             if len(parts) >= 3:
-                cluster_info['cluster_node_list'].append(parts[2])
+                node = {}
+                node['nodeId'] = parts[0]
+                node['nodeName'] = parts[2]
+                cluster_info['cluster_node_list'].append(node)
 
         print(f"\tCluster Name: {cluster_info['cluster_name']}")
         print(f"\tCluster Node Count: {cluster_info['cluster_node_count']}")
-        print(f"\tCluster Nodes: {str.join(", ", cluster_info['cluster_node_list'])}")
+        nodeList = []
+        
+        for node in cluster_info['cluster_node_list']:
+            nodeList.append(node['nodeName'])
+        nodeString = str.join(", ", nodeList)
+        print(f"\tCluster Nodes: {nodeString}")
         
         # Ask if this is the first node to be configured
         cluster_name = cluster_info['cluster_name']
         is_first = ask_yes_no(
             f"\nIs this node the first node to be configured for SAN Storage in cluster '{cluster_name}'?"
         )
+        if is_first:
+            cluster_info['first_cluster_node'] = socket.gethostname()
         cluster_info['is_first_cluster_node'] = is_first
         
     except subprocess.CalledProcessError:
@@ -742,13 +750,14 @@ def get_mount_root()->str:
                     Path.mkdir(mountRoot)
                     return mountRoot
 
-def get_aliases_for_volumes(volumes:list)->dict:
+def get_aliases_for_volumes(volumes:list, mountRoot:str=None)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to
     created the multipath.conf file
 
     Args:
         volumes (list): List of volume dictionaries
+        mountRoot (str): Mountpoint root for Hitachi volumes
 
     Returns:
         list: List of volume dictionaries
@@ -759,16 +768,33 @@ def get_aliases_for_volumes(volumes:list)->dict:
     print("###############################")
     for volume in volumes:
         print(f"{volume['scsi_id']:<35}Size: {volume['size']}")
+        # Get volume alias
         while True:
             alias = input("\tEnter name for volume alias: ")
             if(ask_yes_no(f"\tIs alias '{alias}' correct?")):
                 volume['alias'] = alias
                 print()
                 break
+        # Get volume usage
+        while True:
+            usage = input("How will volume be used? (datastore, rdm)?")
+            if usage.lower == "datastore" or usage.lower == "rdm":
+                volume['volumeType'] = usage.lower
+                break
+            else:
+                print("Invalid volume usage!")
+        if volume['volumeType'] == 'datastore':
+            volume['datastoreInfo'] = {
+                "fileSystem": "gfs2",
+				"mountPoint": mountRoot + "/" + volume['alias'],
+				"datastoreName": volume['alias']
+            }
+
+
 
     return volumes
 
-def create_config_file(hostname, servertype, multipath_volumes, excluded_volumes, cluster_info=None)->bool:
+def create_config_file(hostname:str, servertype:str, multipath_volumes:list, excluded_volumes:list, mount_point:str, cluster_info:dict={})->bool:
     """
     Creates JSON config file to be used by this node or other nodes to generate multipath.conf files
 
@@ -777,15 +803,34 @@ def create_config_file(hostname, servertype, multipath_volumes, excluded_volumes
         servertype: (str) "standalone" or "cluster"
         multipath_volumes: (list->dict) List of volumes to enable and configure multipath on
         excluded_volumes: (list->dict) List of volumes to remove or prevent multipath services on
-        cluster_info: (dict): Information of the Proxmox Cluster and its cluster nodes
+        mount_point: (str) Mount point on the system where Hitachi volumes will be mounted
+        cluster_info: (dict): Information of the Proxmox Cluster and its cluster nodes. Defualt is blank dict
 
     Returns:
         bool: True if "hitachi_config.json" is created/overwritten, false otherwise
     """
+    
+    
     hitachi_config = {
         'serverName': hostname,
-
+        'mountRoot': mount_point,
+        'isClusterNode': servertype=='cluster',
+        'clusterConfig': {}
     }
+
+    if cluster_info:
+        hitachi_config['clusterConfig'] = {
+            "clusterName": cluster_info['cluster_name'],
+            "clusterNodes": cluster_info['cluster_node_list'],
+            "firstNode": cluster_info['first_cluster_node']
+        }
+
+    multipathVolumes = {}
+    for volume in multipath_volumes:
+        multipathVolume = {
+
+        }
+    multipathData = {}
 
 if __name__ == "__main__":
    if os.geteuid() != 0:

@@ -13,7 +13,8 @@
 				"nodeId": 2,
 				"nodeName": "pve2"
 			}
-		]
+		],
+		"firstNode": "pve1"
 	},
 	"multipathData": {
 		"multipathVolumes": {
