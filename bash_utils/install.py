@@ -748,7 +748,7 @@ def get_mount_root()->str:
             else:
                 if ask_yes_no("Directory doesn't exist. Do you want to create it?"):
                     Path.mkdir(mountRoot)
-                    return mountRoot
+                    return str(mountRoot)
 
 def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
     """
