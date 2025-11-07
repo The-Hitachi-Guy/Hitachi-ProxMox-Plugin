@@ -744,7 +744,7 @@ def get_mount_root()->str:
         if ask_yes_no(f"Use '{mountRoot}' as root for mounting Hitachi storage on this system?"):
             mountRoot = Path(mountRoot)
             if Path.exists(mountRoot):
-                return mountRoot
+                return str(mountRoot)
             else:
                 if ask_yes_no("Directory doesn't exist. Do you want to create it?"):
                     Path.mkdir(mountRoot)
