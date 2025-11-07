@@ -811,7 +811,7 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
     print("# Configure Multipath Volumes #")
     print("###############################")
     for volume in volumes:
-        print(f"{volume['scsi_id']:<35}Size: {volume['size']}")
+        print(f"\n{volume['scsi_id']:<35}Size: {volume['size']}")
         # Get volume alias
         while True:
             alias = input("\tEnter name for volume alias: ")
@@ -858,6 +858,7 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
                 else:
                     print(f"Invalid entry... Enter only numbers and commas")
                 volume['rdmInfo'] = rdmInfo
+                break
 
     return volumes
 
