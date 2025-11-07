@@ -915,7 +915,7 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
                     first_largest_unused_scsiId = 0
                     for vm in selected_vms:
                         vm_scsi_devices = get_vm_scsi_devices(vm)
-                        largest = max(vm_scsi_devices, key=lambda x: x['scsiNum'])
+                        largest = max(vm_scsi_devices, key=lambda x: x['scsiNum'])['scsiNum']
                         if largest > first_largest_unused_scsiId:
                             first_largest_unused_scsiId = largest + 1
 
