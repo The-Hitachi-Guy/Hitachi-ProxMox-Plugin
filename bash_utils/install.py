@@ -767,9 +767,10 @@ def get_vms()->list:
         ]
     """
     # Get list of VMs
+    print('Getting list of VMs from the Proxmox cluster')
     try:
         result = subprocess.run(
-            ['pvesh', 'get', '/cluster/resources', '--type', 'vm', '--output-format json'],
+            ['pvesh', 'get', '/cluster/resources', '--type', 'vm', '--output-format', 'json'],
             capture_output=True,
             text=True,
             check=True
@@ -872,12 +873,16 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
                 break
             else:
                 print("\tInvalid volume usage!")
+        
+        # if volume will be used as a datastore
         if volume['volumeType'] == 'datastore':
             volume['datastoreInfo'] = {
                 "fileSystem": "gfs2",
 				"mountPoint": mountRoot + "/" + volume['alias'],
 				"datastoreName": volume['alias']
             }
+        
+        # else the volume will be used as an RDM device
         else:
             rdmInfo = {
                 'diskId': "scsi-"+volume['scsi_id']
