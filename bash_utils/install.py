@@ -769,19 +769,20 @@ def get_vms()->list:
     # Get list of VMs
     try:
         result = subprocess.run(
-            ['qm', 'list'],
+            ['pvesh', 'get', '/cluster/resources', '--type', 'vm', '--output-format json'],
             capture_output=True,
             text=True,
             check=True
         )
+
+        vms_raw = json.loads(result.stdout.strip())
         
         vms = []
-        lines = result.stdout.strip().split('\n')[1:] # Skipping header line
-        for line in lines:
-            parts = line.split()
+        for vm_raw in vms_raw:
             vm = {
-                'vmId': int(parts[0].strip()),
-                'vmName': parts[1].strip()
+                'vmId': vm_raw['vmid'],
+                'vmName': vm_raw['name'],
+                'node': vm_raw['node']
             }
             vms.append(vm)
         return vms
@@ -793,6 +794,51 @@ def get_vms()->list:
         print("ERROR: pvecm command not found. Is Proxmox VE installed? Exiting...")
         sys.exit(1)
 
+def get_vm_scsi_devices(vm:dict)->list:
+    """
+    Get list of SCSI devices for a VM
+
+    Args:
+        vm: (dict) VM object
+
+    Returns:
+        list: (dict) List of SCSI devices
+        [
+            {
+                "scsiNum": int,
+                "scsiId": str,
+                "device": str
+            }
+        ]
+    """
+
+    try:
+        result = subprocess.run(
+            ['pvesh', 'get', f'/node/{vm['node']}/qemu/{vm['vmid']}/config', '--output-format', 'json'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        vm_config = json.loads(result.stdout.strip())
+        scsi_keys = [key for key in vm_config.keys() if (key.startswith('scsi') and not key.endswith('hw'))]
+
+        scsi_devices = []
+        for scsi_key in scsi_keys:
+            scsi_device = {
+                'scsiNum': int(scsi_key[4:]),
+                'scsiId': scsi_key,
+                'device': vm_config[scsi_key]
+            }
+            scsi_devices.append(scsi_devices)
+        return scsi_devices
+
+    except subprocess.CalledProcessError:
+        print("ERROR: This node is NOT part of a Proxmox cluster. Exiting...")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("ERROR: pvecm command not found. Is Proxmox VE installed? Exiting...")
+        sys.exit(1)
 
 def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
     """
@@ -849,10 +895,26 @@ def configure_volumes_for_multipath(volumes:list, mountRoot:str=None)->dict:
                     for index in selected_vms_indexes:
                         try:
                             index = int(index.strip())-1
+                            selected_vms.append(vms[index])
                         except:
                             print(f"Invalid entry [{index}]... Enter only numbers and commas")
 
-                        selected_vms.append(vms[index])
+                        
+                    
+                    # Still need to get what SCSI ID these will be assigned for each VM
+                    # I suggest finding out what is the highest SCSI ID needed and then
+                    # using that for all VMs
+
+                    first_largest_unused_scsiId = 0
+                    for vm in selected_vms:
+                        vm_scsi_devices = get_vm_scsi_devices(vm)
+                        largest = max(vm_scsi_devices, key=lambda x: x['scsiNum'])['scsiNum']
+                        if largest > first_largest_unused_scsiId:
+                            first_largest_unused_scsiId = largest + 1
+
+                    for vm in selected_vms:
+                        vm['scsiId'] = 'scsi' + str(first_largest_unused_scsiId)
+
                     rdmInfo['vms'] = selected_vms
 
                 else:
