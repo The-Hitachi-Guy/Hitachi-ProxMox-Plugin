@@ -7,7 +7,7 @@
 		"multipathVolumes": {
 			"1234": {
 				"wwid": "1234",
-				"friendlyName": "Proxmox-Cluster-Vol1",
+				"alias": "Proxmox-Cluster-Vol1",
 				"volumeType": "datastore",
 				"datastoreInfo": {
                     "fileSystem": "gfs2",
@@ -17,7 +17,7 @@
 			},
 			"5678": {
 				"wwid": "5678",
-				"friendlyName": "Proxmox-Cluster-Vol2",
+				"alias": "Proxmox-Cluster-Vol2",
 				"volumeType": "rdm",
 				"rdmInfo": {
 					"diskId": "scsi-360060e80289e1d0050809e1d00000079",
@@ -35,7 +35,7 @@
 			},
 			"9876": {
 				"wwid": "9876",
-				"friendlyName": "Proxmox-Cluster-Vol3",
+				"alias": "Proxmox-Cluster-Vol3",
 				"volumeType": "unused"
 			}
 		},
