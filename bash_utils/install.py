@@ -9,13 +9,10 @@ def main(config: dict = None):
     else:
         config = {}
         hostname = socket.gethostname()
-        config['serverName'] = socket.gethostname()
-        config['isClusterNode'] = False
         serverType = getServerType()
         cluster_info = {}
         if serverType == 'cluster':
-            config['isClusterNode'] = True
-            config['clusterConfig'] = get_cluster_information()
+            cluster_info = get_cluster_information()
         handleNeededPackages()
         # configure_dlm_for_cluster()
         print_wwpn()
@@ -1011,7 +1008,7 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     }
 
     # If there is cluster info, add it to the config
-    if cluster_info:
+    if len(cluster_info.keys()) > 0:
         hitachi_config['clusterConfig'] = {
             "clusterName": cluster_info['cluster_name'],
             "clusterNodes": cluster_info['cluster_node_list'],
@@ -1042,6 +1039,13 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
         
         # Add volume to multipathVolumes dict
         multipathVolumes[volume['scsi_id']] = multipathVolume
+
+    # Correct excluded volumes info
+    for volume in excluded_volumes:
+        volume.pop('sd_devices', None)  # Remove sd_devices info from excluded volume dict
+        volume.pop('size', None)  # Remove size info from excluded volume dict
+        volume.pop('model', None)  # Remove model info from excluded volume dict
+        volume.pop('wwn', None)  # Remove wwn info from excluded volume dict
 
     # Create multipathData entry
     multipathData = {"multipathVolumes": multipathVolumes, "blacklistedVolumes": excluded_volumes}
