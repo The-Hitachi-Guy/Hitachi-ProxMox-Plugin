@@ -6,7 +6,7 @@
 	"multipathData": {
 		"multipathVolumes": {
 			"1234": {
-				"wwid": "1234",
+				"scsi_id": "1234",
 				"alias": "Proxmox-Cluster-Vol1",
 				"volumeType": "datastore",
 				"datastoreInfo": {
@@ -16,7 +16,7 @@
 				}
 			},
 			"5678": {
-				"wwid": "5678",
+				"scsi_id": "5678",
 				"alias": "Proxmox-Cluster-Vol2",
 				"volumeType": "rdm",
 				"rdmInfo": {
@@ -34,17 +34,17 @@
 				}
 			},
 			"9876": {
-				"wwid": "9876",
+				"scsi_id": "9876",
 				"alias": "Proxmox-Cluster-Vol3",
 				"volumeType": "unused"
 			}
 		},
 		"blacklistedVolumes": [
 			{
-				"wwid": "123456"
+				"scsi_id": "123456"
 			},
 			{
-				"wwid": "SATADOM"
+				"scsi_id": "SATADOM"
 			}
 		]
 	}
