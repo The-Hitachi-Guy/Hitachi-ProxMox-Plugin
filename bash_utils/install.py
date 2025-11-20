@@ -119,8 +119,6 @@ def get_cluster_information() -> dict:
             except ValueError:
                 cluster_info['cluster_node_count'] = 0
 
-    sys.exit(1)
-
     # Get cluster node list
     command = "pvecm nodes"
     stdout, stderr, success = runCommand(command)
