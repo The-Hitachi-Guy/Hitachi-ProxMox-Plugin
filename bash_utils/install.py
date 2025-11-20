@@ -993,7 +993,9 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     
     # Get config file path
     scriptPath = Path(__file__).parent.resolve()
+    print("Script path:", str(scriptPath))
     configFilePath = scriptPath.parents[2] / 'config' / 'hitachi_config.json'
+    print("Config file path:", str(configFilePath))
 
     # Create config directory if it doesn't exist
     if not configFilePath.parent.exists():
@@ -1054,7 +1056,6 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     hitachi_config['multipathData'] = multipathData
 
     # Write config to JSON file
-    print(f"Creating Hitachi configuration file at {str(configFilePath)}")
     with open(configFilePath, 'w') as f:
         json.dump(hitachi_config, f, indent=4)
 
