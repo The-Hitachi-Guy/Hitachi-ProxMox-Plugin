@@ -1063,14 +1063,24 @@ def runCommand(command:str)->tuple:
 
     Returns:
         tuple:
-            str:stdout
-            str:stderr
+            str:stdout with stripped output
+            str:stderr with stripped output
             bool: True if command ran successfully, false otherwise
     """
     print(f"RUNNING: {command}")
     try:
         result = subprocess.run(command.split(), check=True)
-        return result.stdout.strip(), result.stderr.strip(), result.returncode == 0
+        if result.stdout is not None:
+            stdout = result.stdout.strip()
+        else:
+            stdout = ""
+
+        if result.stderr is not None:
+            stderr = result.stderr.strip()
+        else:
+            stderr = ""
+
+        return stdout, stderr, result.returncode == 0
     except subprocess.CalledProcessError as e:
         print(f"Error running command '{command}': {e}")
         return "", e, False
