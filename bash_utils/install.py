@@ -108,6 +108,8 @@ def get_cluster_information() -> dict:
         return cluster_info
     
     # Parse cluster name
+    print("Printing Proxmox Cluster Information:")
+    print(stdout)
     for line in stdout.split('\n'):
         if 'Name:' in line:
             cluster_info['cluster_name'] = line.split(':', 1)[1].strip()
@@ -116,6 +118,8 @@ def get_cluster_information() -> dict:
                 cluster_info['cluster_node_count'] = int(line.split(':', 1)[1].strip())
             except ValueError:
                 cluster_info['cluster_node_count'] = 0
+
+    sys.exit(1)
 
     # Get cluster node list
     command = "pvecm nodes"
