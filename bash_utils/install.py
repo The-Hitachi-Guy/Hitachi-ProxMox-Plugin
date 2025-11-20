@@ -108,8 +108,6 @@ def get_cluster_information() -> dict:
         return cluster_info
     
     # Parse cluster name
-    print("Printing Proxmox Cluster Information:")
-    print(stdout)
     for line in stdout.split('\n'):
         if 'Name:' in line:
             cluster_info['cluster_name'] = line.split(':', 1)[1].strip()
@@ -125,9 +123,7 @@ def get_cluster_information() -> dict:
     if not success:
         print("ERROR: Could not retrieve cluster node list. Exiting...")
         sys.exit(1)
-    
-    print("Proxmox node list:")
-    print(stdout)
+
     # Parse node list (skip first 4 lines of header)
     lines = stdout.split('\n')
     for line in lines[3:]:  # Skip header lines
