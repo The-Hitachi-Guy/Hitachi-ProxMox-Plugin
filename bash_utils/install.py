@@ -15,7 +15,6 @@ def main(config: dict = None):
         cluster_info = {}
         if serverType == 'cluster':
             config['isClusterNode'] = True
-            cluster_info = get_cluster_information()
             config['clusterConfig'] = get_cluster_information()
         handleNeededPackages()
         # configure_dlm_for_cluster()
@@ -134,6 +133,7 @@ def get_cluster_information() -> dict:
             node['nodeName'] = parts[2]
             cluster_info['cluster_node_list'].append(node)
 
+    print("\nCluster Information:")
     print(f"\tCluster Name: {cluster_info['cluster_name']}")
     print(f"\tCluster Node Count: {cluster_info['cluster_node_count']}")
     nodeList = []
