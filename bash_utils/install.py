@@ -992,9 +992,9 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     """
     
     # Get config file path
-    scriptPath = Path(__file__).resolve()
+    scriptPath = Path(__file__).parent
     print("Script path:", str(scriptPath))
-    configFilePath = scriptPath.parents[1] / 'config' / 'hitachi_config.json'
+    configFilePath = scriptPath.parent / 'config' / 'hitachi_config.json'
     print("Config file path:", str(configFilePath))
 
     # Get the directory where the current script is located
