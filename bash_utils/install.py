@@ -28,6 +28,8 @@ def main(config: dict = None):
 
         hitachi_config = create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
         print(json.dumps(hitachi_config, indent=4))
+
+        conifgure_volumes(hitachi_config)
     
     return 0
 
