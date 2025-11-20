@@ -130,7 +130,7 @@ def get_cluster_information() -> dict:
     print(stdout)
     # Parse node list (skip first 4 lines of header)
     lines = stdout.split('\n')
-    for line in lines[4:]:  # Skip header lines
+    for line in lines[3:]:  # Skip header lines
         parts = line.split()
         if len(parts) >= 3:
             node = {}
