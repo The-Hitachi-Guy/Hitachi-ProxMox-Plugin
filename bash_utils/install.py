@@ -14,7 +14,7 @@ def main(config: dict = None):
         if serverType == 'cluster':
             cluster_info = get_cluster_information()
         handleNeededPackages()
-        # configure_dlm_for_cluster()
+        configure_dlm_for_cluster()
         print_wwpn()
         print()
         input("Hit enter to continue once the volumes are attached to the server...")
@@ -993,18 +993,7 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     
     # Get config file path
     scriptPath = Path(__file__).parent
-    print("Script path:", str(scriptPath))
     configFilePath = scriptPath.parent / 'config' / 'hitachi_config.json'
-    print("Config file path:", str(configFilePath))
-
-    # Get the directory where the current script is located
-    script_dir = Path(__file__).parent
-
-    # Go one directory up, then into 'config' directory
-    config_dir = script_dir.parent / 'config'
-
-    # Create the config directory if it doesn't exist
-    config_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config directory if it doesn't exist
     if not configFilePath.parent.exists():
