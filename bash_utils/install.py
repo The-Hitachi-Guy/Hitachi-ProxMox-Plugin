@@ -1073,7 +1073,7 @@ def runCommand(command:str)->tuple:
     """
     print(f"RUNNING: {command}")
     try:
-        result = subprocess.run(command.split(), check=True)
+        result = subprocess.run(command.split(), check=True, capture_output=True, text=True)
         if result.stdout is not None:
             stdout = result.stdout.strip()
         else:
