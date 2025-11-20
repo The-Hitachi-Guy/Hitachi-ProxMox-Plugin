@@ -30,6 +30,7 @@ def main(config: dict = None):
         #     print(json.dumps(volume,indent=4))
 
         hitachi_config = create_config_file(hostname, serverType, selected_volumes, rejected_volumes, mountRoot, cluster_info)
+        print(json.dumps(hitachi_config, indent=4))
     
     return 0
 
@@ -935,7 +936,7 @@ def conifgure_volumes(config:dict)->bool:
                 print(f"STDERR: {stderr}")
                 return False
             
-            mount_unit_path = Path('/etc/systemd/system') / result.stdout.strip()
+            mount_unit_path = Path('/etc/systemd/system') / stdout
 
             with open(mount_unit_path, 'w') as f:
                 f.write(systemd_content)
@@ -995,7 +996,7 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     
     # Get config file path
     scriptPath = Path(__file__).parent.resolve()
-    configFilePath = scriptPath.parents[2] / "config" / 'hitachi_config.json'
+    configFilePath = scriptPath.parents[2] / 'config' / 'hitachi_config.json'
 
     # Create config directory if it doesn't exist
     if not configFilePath.parent.exists():
