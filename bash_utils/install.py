@@ -994,7 +994,7 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     # Get config file path
     scriptPath = Path(__file__).parent.resolve()
     print("Script path:", str(scriptPath))
-    configFilePath = scriptPath.parents[2] / 'config' / 'hitachi_config.json'
+    configFilePath = scriptPath.parents[2].resolve() / 'config' / 'hitachi_config.json'
     print("Config file path:", str(configFilePath))
 
     # Create config directory if it doesn't exist
