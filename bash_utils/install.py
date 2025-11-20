@@ -1054,6 +1054,7 @@ def create_config_file(hostname:str, servertype:str, multipath_volumes:list, exc
     hitachi_config['multipathData'] = multipathData
 
     # Write config to JSON file
+    print(f"Creating Hitachi configuration file at {str(configFilePath)}")
     with open(configFilePath, 'w') as f:
         json.dump(hitachi_config, f, indent=4)
 
