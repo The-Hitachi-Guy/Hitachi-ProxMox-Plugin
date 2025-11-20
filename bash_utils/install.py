@@ -21,7 +21,7 @@ def main(config: dict = None):
         verify_disks_found()
         selected_volumes, rejected_volumes = select_disks_for_multipathing()
         mountRoot = get_mount_root()
-        selected_volumes = configure_volumes_for_multipath(selected_volumes, mountRoot)
+        selected_volumes = configure_volumes_for_multipath(selected_volumes, mountRoot, serverType=='cluster')
 
         # for volume in selected_volumes:
         #     print(json.dumps(volume,indent=4))
