@@ -762,6 +762,24 @@ def get_vm_scsi_devices(vm:dict)->list:
         scsi_devices.append(scsi_device)
     return scsi_devices
 
+def implement_multipath_configuration(config:dict)->bool:
+    """
+    Implements multipath configuration based on the provided configuration dictionary.
+    
+    Args:
+        config: (dict) Configuration dictionary for multipath setup
+        
+    Returns:
+        bool: True if multipath configuration was successful, False otherwise
+    """
+    multipath_file_path = Path('/etc/multipath.conf')
+    if multipath_file_path.exists():
+        backup_path = multipath_file_path.with_suffix('.bak')
+        multipath_file_path.rename(backup_path)
+        print(f"Existing multipath.conf backed up to {backup_path}")
+
+    
+
 def configure_volumes_for_multipath(volumes:list, mountRoot:str=None, isCluster=False)->dict:
     """
     Asks user to provide an alias for each volume in the list which will be used later to

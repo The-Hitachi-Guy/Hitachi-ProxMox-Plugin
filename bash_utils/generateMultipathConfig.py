@@ -1,9 +1,18 @@
 import os, sys, json, re, argparse, shutil
+from typing import Any
+from pathlib import Path
 
 def main() -> None:
-    pass
+    current_multipath_config = readMultipathConfigFile()
+    if current_multipath_config is not None:
+        current_multipath_config = parse_multipath_string(current_multipath_config)
+        for device in current_multipath_config.get("devices", {}).get("device", []):
+            print(device)
+    else:
+        pass
+        generate_multipath_config()
 
-def generate_multipath_config()->None:
+def generate_multipath_config()->dict:
     """
     Generates a default multipath configuration dictionary.
     
@@ -119,6 +128,202 @@ def readConfigFile()->dict:
         print(f"Error reading config file: {e}")
     finally:
         return configData
+    
+def readMultipathConfigFile()->str:
+    """
+    Reads the existing multipath configuration file and returns its contents as a string
+    Returns:
+        str: The contents of the multipath configuration file
+    Raises:
+        Exception: If there is an error reading the file
+    """
+    filePath = Path("/etc/multipath.conf")
+    content = ""
+    if filePath.exists():
+        try:
+            with open(filePath, "r") as f:
+                content = f.read()
+        except Exception as e:
+            print(f"Error reading multipath config file: {e}")
+        finally:
+            return content
+    else:
+        return None
+    
+def parse_multipath_conf(filepath: str) -> dict[str, Any]:
+    """
+    Parse a multipath.conf file and return a dictionary representation.
+    
+    Args:
+        filepath: Path to the multipath.conf file
+        
+    Returns:
+        Dictionary containing the parsed configuration
+    """
+    with open(filepath, 'r') as f:
+        content = f.read()
+    
+    return parse_multipath_string(content)
+
+def parse_multipath_string(content: str) -> dict[str, Any]:
+    """Parse multipath.conf content from a string."""
+    # Remove comments (lines starting with # or inline comments)
+    lines = []
+    for line in content.split('\n'):
+        # Remove inline comments
+        line = re.sub(r'#.*$', '', line)
+        lines.append(line)
+    content = '\n'.join(lines)
+    
+    return _parse_block(content)
+
+def _parse_block(content: str) -> dict[str, Any]:
+    """Parse a block of multipath.conf content."""
+    result = {}
+    i = 0
+    tokens = _tokenize(content)
+    
+    while i < len(tokens):
+        token = tokens[i]
+        
+        if token == '}':
+            break
+        elif i + 1 < len(tokens) and tokens[i + 1] == '{':
+            # This is a section/block
+            section_name = token
+            i += 2  # Skip name and '{'
+            
+            # Find matching closing brace
+            block_content, consumed = _extract_block(tokens[i:])
+            i += consumed
+            
+            parsed_block = _parse_block_tokens(block_content)
+            
+            # Handle multiple sections with same name (e.g., multiple "device" or "multipath")
+            if section_name in result:
+                if not isinstance(result[section_name], list):
+                    result[section_name] = [result[section_name]]
+                result[section_name].append(parsed_block)
+            else:
+                result[section_name] = parsed_block
+        elif i + 1 < len(tokens) and tokens[i + 1] not in ('{', '}'):
+            # This is a key-value pair
+            key = token
+            value = tokens[i + 1]
+            # Try to convert to appropriate type
+            value = _convert_value(value)
+            
+            if key in result:
+                if not isinstance(result[key], list):
+                    result[key] = [result[key]]
+                result[key].append(value)
+            else:
+                result[key] = value
+            i += 2
+        else:
+            i += 1
+    
+    return result
+
+def _tokenize(content: str) -> list[str]:
+    """Tokenize the multipath.conf content."""
+    tokens = []
+    # Match quoted strings, braces, or unquoted words
+    pattern = r'"[^"]*"|\'[^\']*\'|[{}]|[^\s{}]+'
+    
+    for match in re.finditer(pattern, content):
+        token = match.group()
+        # Remove quotes from quoted strings
+        if (token.startswith('"') and token.endswith('"')) or \
+           (token.startswith("'") and token.endswith("'")):
+            token = token[1:-1]
+        tokens.append(token)
+    
+    return tokens
+
+def _extract_block(tokens: list[str]) -> tuple[list[str], int]:
+    """Extract tokens until matching closing brace."""
+    depth = 1
+    block = []
+    i = 0
+    
+    while i < len(tokens) and depth > 0:
+        if tokens[i] == '{':
+            depth += 1
+        elif tokens[i] == '}':
+            depth -= 1
+            if depth == 0:
+                i += 1
+                break
+        block.append(tokens[i])
+        i += 1
+    
+    return block, i
+
+def _parse_block_tokens(tokens: list[str]) -> dict[str, Any]:
+    """Parse a list of tokens into a dictionary."""
+    result = {}
+    i = 0
+    
+    while i < len(tokens):
+        token = tokens[i]
+        
+        if token in ('{', '}'):
+            i += 1
+            continue
+        elif i + 1 < len(tokens) and tokens[i + 1] == '{':
+            # Nested section
+            section_name = token
+            i += 2
+            block_content, consumed = _extract_block(tokens[i:])
+            i += consumed
+            
+            parsed_block = _parse_block_tokens(block_content)
+            
+            if section_name in result:
+                if not isinstance(result[section_name], list):
+                    result[section_name] = [result[section_name]]
+                result[section_name].append(parsed_block)
+            else:
+                result[section_name] = parsed_block
+        elif i + 1 < len(tokens) and tokens[i + 1] not in ('{', '}'):
+            # Key-value pair
+            key = token
+            value = _convert_value(tokens[i + 1])
+            
+            if key in result:
+                if not isinstance(result[key], list):
+                    result[key] = [result[key]]
+                result[key].append(value)
+            else:
+                result[key] = value
+            i += 2
+        else:
+            i += 1
+    
+    return result
+
+def _convert_value(value: str) -> Any:
+    """Convert string value to appropriate Python type."""
+    # Boolean-like values
+    if value.lower() in ('yes', 'true'):
+        return True
+    if value.lower() in ('no', 'false'):
+        return False
+    
+    # Try integer
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    
+    # Try float
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    
+    return value
     
 if __name__ == "__main__":
     generate_multipath_config()
