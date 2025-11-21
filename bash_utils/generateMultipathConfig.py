@@ -6,6 +6,9 @@ def main() -> None:
     current_multipath_config = readMultipathConfigFile()
     if current_multipath_config is not None:
         current_multipath_config = parse_multipath_string(current_multipath_config)
+        print(json.dumps(current_multipath_config, indent=4))
+        print()
+        print()
         for device in current_multipath_config.get("devices", {}).get("device", []):
             print(device)
     else:
