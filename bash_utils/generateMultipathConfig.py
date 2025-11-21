@@ -9,7 +9,7 @@ def main() -> None:
         print(json.dumps(current_multipath_config, indent=4))
         print()
         print()
-        for device in current_multipath_config.get("devices", {}).get("device", []):
+        for device in current_multipath_config.get("devices", {}):
             print(device)
     else:
         pass
