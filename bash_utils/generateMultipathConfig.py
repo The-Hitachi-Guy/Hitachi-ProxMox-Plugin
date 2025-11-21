@@ -326,4 +326,4 @@ def _convert_value(value: str) -> Any:
     return value
     
 if __name__ == "__main__":
-    generate_multipath_config()
+    main()
